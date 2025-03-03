@@ -1,5 +1,5 @@
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -32,17 +32,207 @@ const nodeTypes: NodeTypes = {
 
 interface FactoryEditorProps {
   isSimulating: boolean;
+  simulationMode?: "instant" | "play-by-play";
+  simulationSpeed?: number;
+  onUnitPositionUpdate?: (position: { nodeId: string, progress: number } | null) => void;
 }
 
-const FactoryEditor = ({ isSimulating }: FactoryEditorProps) => {
+const FactoryEditor = ({ 
+  isSimulating, 
+  simulationMode = "instant",
+  simulationSpeed = 1,
+  onUnitPositionUpdate
+}: FactoryEditorProps) => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
   const [placeholderNode, setPlaceholderNode] = useState<Node | null>(null);
   const [showConnectionAlert, setShowConnectionAlert] = useState(false);
   const [pendingConnection, setPendingConnection] = useState<Connection | null>(null);
+  const [currentUnitPosition, setCurrentUnitPosition] = useState<{ nodeId: string, progress: number } | null>(null);
   
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  
+  // For play-by-play simulation
+  useEffect(() => {
+    if (isSimulating && simulationMode === "play-by-play") {
+      // Start play-by-play animation
+      startPlayByPlaySimulation();
+    } else if (!isSimulating && animationFrameRef.current) {
+      // Cancel animation if simulation stops
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+      setCurrentUnitPosition(null);
+      if (onUnitPositionUpdate) onUnitPositionUpdate(null);
+      
+      // Reset any visual indicators on nodes
+      setNodes(nds => 
+        nds.map(node => ({
+          ...node,
+          data: {
+            ...node.data,
+            active: false,
+            utilization: undefined
+          }
+        }))
+      );
+    }
+    
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+    };
+  }, [isSimulating, simulationMode, setNodes, onUnitPositionUpdate]);
+  
+  // Play-by-play simulation logic
+  const startPlayByPlaySimulation = useCallback(() => {
+    // First, identify the flow path by traversing edges
+    const flowPath: string[] = [];
+    const edgeMap = new Map<string, string[]>();
+    
+    // Create a map of source node to target nodes
+    edges.forEach(edge => {
+      const sources = edgeMap.get(edge.source) || [];
+      sources.push(edge.target);
+      edgeMap.set(edge.source, sources);
+    });
+    
+    // Find the first node (one with no incoming edges)
+    const allTargets = new Set(edges.map(e => e.target));
+    const startNodeId = nodes.find(n => !allTargets.has(n.id))?.id;
+    
+    if (!startNodeId) {
+      toast({
+        title: "Simulation Error",
+        description: "Could not identify the starting point of your process flow.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Traverse the flow to create a path
+    let currentNodeId = startNodeId;
+    flowPath.push(currentNodeId);
+    
+    // Simple traversal for linear flows
+    while (edgeMap.has(currentNodeId)) {
+      const nextNodes = edgeMap.get(currentNodeId) || [];
+      if (nextNodes.length === 0) break;
+      // For simplicity, we take the first target (linear flow assumption)
+      currentNodeId = nextNodes[0];
+      flowPath.push(currentNodeId);
+    }
+    
+    if (flowPath.length < 2) {
+      toast({
+        title: "Simulation Error",
+        description: "Your process needs at least two connected equipment to run a simulation.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Set up the animation
+    let currentPathIndex = 0;
+    let progressWithinNode = 0;
+    const nodeDataMap = new Map(nodes.map(n => [n.id, n.data]));
+    
+    // Animation loop
+    const animate = (timestamp: number) => {
+      if (currentPathIndex >= flowPath.length) {
+        // Simulation complete
+        toast({
+          title: "Simulation Complete",
+          description: "Unit has completed the process flow."
+        });
+        
+        // Generate and display results
+        const avgCycleTime = flowPath.reduce((total, nodeId) => {
+          const nodeData = nodeDataMap.get(nodeId);
+          return total + (nodeData?.cycleTime || 0);
+        }, 0);
+        
+        const throughput = Math.floor(3600 / avgCycleTime);
+        
+        // Find bottleneck (node with highest cycle time)
+        let bottleneckId = flowPath[0];
+        let maxCycleTime = 0;
+        
+        flowPath.forEach(nodeId => {
+          const cycleTime = nodeDataMap.get(nodeId)?.cycleTime || 0;
+          if (cycleTime > maxCycleTime) {
+            maxCycleTime = cycleTime;
+            bottleneckId = nodeId;
+          }
+        });
+        
+        // Set utilization values for all nodes
+        setNodes(nds => 
+          nds.map(node => {
+            const nodeCycleTime = nodeDataMap.get(node.id)?.cycleTime || 0;
+            const utilization = Math.min(100, Math.round((nodeCycleTime / maxCycleTime) * 100));
+            
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                active: false,
+                utilization: utilization,
+                bottleneck: node.id === bottleneckId
+              }
+            };
+          })
+        );
+        
+        return;
+      }
+      
+      const currentNodeId = flowPath[currentPathIndex];
+      const currentNodeData = nodeDataMap.get(currentNodeId);
+      
+      if (!currentNodeData) {
+        currentPathIndex++;
+        animate(timestamp);
+        return;
+      }
+      
+      // Calculate how much to progress based on cycle time and simulation speed
+      const cycleDuration = currentNodeData.cycleTime * 1000 / simulationSpeed; // Convert to ms
+      const stepSize = 1 / cycleDuration;
+      progressWithinNode += stepSize;
+      
+      // Update node visualization
+      setNodes(nds => 
+        nds.map(node => ({
+          ...node,
+          data: {
+            ...node.data,
+            active: node.id === currentNodeId,
+            progress: node.id === currentNodeId ? progressWithinNode : undefined
+          }
+        }))
+      );
+      
+      // Update current position for UI/tracking
+      setCurrentUnitPosition({ nodeId: currentNodeId, progress: progressWithinNode });
+      if (onUnitPositionUpdate) onUnitPositionUpdate({ nodeId: currentNodeId, progress: progressWithinNode });
+      
+      // Move to next node when done with current one
+      if (progressWithinNode >= 1) {
+        progressWithinNode = 0;
+        currentPathIndex++;
+      }
+      
+      // Continue animation
+      animationFrameRef.current = requestAnimationFrame(animate);
+    };
+    
+    // Start the animation
+    animationFrameRef.current = requestAnimationFrame(animate);
+  }, [edges, nodes, setNodes, simulationSpeed, onUnitPositionUpdate]);
   
   const onInit = useCallback((instance: ReactFlowInstance) => {
     setReactFlowInstance(instance);

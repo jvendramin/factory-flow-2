@@ -12,17 +12,20 @@ interface EquipmentNodeData {
   bottleneck?: boolean;
   utilization?: number;
   placeholder?: boolean;
+  active?: boolean;
+  progress?: number;
 }
 
 const EquipmentNode = ({ data, isConnectable }: NodeProps<EquipmentNodeData>) => {
-  const { name, type, cycleTime, throughput, bottleneck, utilization, placeholder } = data;
+  const { name, type, cycleTime, throughput, bottleneck, utilization, placeholder, active, progress } = data;
   
   return (
     <div 
       className={cn(
         "border rounded-md p-3 shadow-sm bg-background min-w-40",
         bottleneck ? "border-red-500" : "border-border",
-        placeholder ? "border-dashed border-2 bg-background/80" : ""
+        placeholder ? "border-dashed border-2 bg-background/80" : "",
+        active ? "ring-2 ring-primary" : ""
       )}
     >
       <div className="flex flex-col gap-1">
@@ -38,6 +41,18 @@ const EquipmentNode = ({ data, isConnectable }: NodeProps<EquipmentNodeData>) =>
             <Badge variant="destructive">Bottleneck</Badge>
           )}
         </div>
+        
+        {active && progress !== undefined && (
+          <div className="mt-2 w-full">
+            <div className="text-xs text-center mb-1">Processing unit...</div>
+            <div className="w-full bg-secondary rounded-full h-2">
+              <div 
+                className="bg-primary h-2 rounded-full transition-all duration-100"
+                style={{ width: `${progress * 100}%` }}
+              ></div>
+            </div>
+          </div>
+        )}
         
         <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
           <div className="flex flex-col">

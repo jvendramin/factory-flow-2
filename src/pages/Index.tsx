@@ -10,6 +10,8 @@ import { useTheme } from "@/components/theme/theme-provider";
 const Index = () => {
   const { theme, setTheme } = useTheme();
   const [isSimulating, setIsSimulating] = useState(false);
+  const [simulationMode, setSimulationMode] = useState<"instant" | "play-by-play">("instant");
+  const [currentUnitPosition, setCurrentUnitPosition] = useState<{ nodeId: string, progress: number } | null>(null);
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">
@@ -31,7 +33,11 @@ const Index = () => {
       {/* Main Content - Factory Editor */}
       <div className="flex-1 flex flex-col">
         <div className="flex-1 relative">
-          <FactoryEditor isSimulating={isSimulating} />
+          <FactoryEditor 
+            isSimulating={isSimulating} 
+            simulationMode={simulationMode}
+            onUnitPositionUpdate={setCurrentUnitPosition}
+          />
         </div>
       </div>
       
@@ -39,7 +45,10 @@ const Index = () => {
       <div className="w-80 border-l border-border bg-sidebar">
         <SimulationPanel 
           isSimulating={isSimulating} 
-          setIsSimulating={setIsSimulating} 
+          setIsSimulating={setIsSimulating}
+          simulationMode={simulationMode}
+          setSimulationMode={setSimulationMode}
+          currentUnitPosition={currentUnitPosition}
         />
       </div>
     </div>

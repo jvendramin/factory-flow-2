@@ -4,17 +4,21 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
-import { PlayIcon, PauseIcon, SquareIcon, SettingsIcon, LineChartIcon } from "lucide-react";
+import { PlayIcon, PauseIcon, SquareIcon, SettingsIcon, LineChartIcon, ZapIcon, TimerIcon } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/use-toast";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 interface SimulationPanelProps {
   isSimulating: boolean;
   setIsSimulating: (value: boolean) => void;
+  simulationMode: "instant" | "play-by-play";
+  setSimulationMode: (mode: "instant" | "play-by-play") => void;
+  currentUnitPosition?: { nodeId: string, progress: number } | null;
 }
 
-const SimulationPanel = ({ isSimulating, setIsSimulating }: SimulationPanelProps) => {
+const SimulationPanel = ({ isSimulating, setIsSimulating, simulationMode, setSimulationMode, currentUnitPosition }: SimulationPanelProps) => {
   const [simulationSpeed, setSimulationSpeed] = useState(1);
   const [simulationUnits, setSimulationUnits] = useState(1);
   const [runningBatch, setRunningBatch] = useState(false);
@@ -29,79 +33,82 @@ const SimulationPanel = ({ isSimulating, setIsSimulating }: SimulationPanelProps
   const handleStartSimulation = () => {
     setIsSimulating(true);
     
-    if (simulationUnits > 1) {
-      setRunningBatch(true);
-      setCurrentBatchProgress(0);
-      
-      // Start batch simulation with progress updates
-      const batchSize = simulationUnits;
-      let results = {
-        throughput: 0,
-        cycleTime: 0,
-        utilization: 0,
-        bottlenecks: new Map<string, number>()
-      };
-      
-      // We'll use a chunked approach to avoid freezing the UI
-      const chunkSize = Math.min(Math.max(Math.floor(batchSize / 10), 1), 1000);
-      let processedUnits = 0;
-      
-      const processChunk = () => {
-        const startTime = performance.now();
-        const endUnit = Math.min(processedUnits + chunkSize, batchSize);
+    if (simulationMode === "instant") {
+      if (simulationUnits > 1) {
+        setRunningBatch(true);
+        setCurrentBatchProgress(0);
         
-        for (let i = processedUnits; i < endUnit; i++) {
-          // Generate mock simulation results for this unit
-          const mockResult = getMockSimulationResult();
-          
-          // Accumulate results
-          results.throughput += mockResult.throughput;
-          results.cycleTime += mockResult.cycleTime;
-          results.utilization += mockResult.utilization;
-          
-          // Track bottlenecks frequency
-          mockResult.bottlenecks.forEach(bottleneck => {
-            const count = results.bottlenecks.get(bottleneck) || 0;
-            results.bottlenecks.set(bottleneck, count + 1);
-          });
-        }
+        // Start batch simulation with progress updates
+        const batchSize = simulationUnits;
+        let results = {
+          throughput: 0,
+          cycleTime: 0,
+          utilization: 0,
+          bottlenecks: new Map<string, number>()
+        };
         
-        processedUnits = endUnit;
-        const progress = Math.floor((processedUnits / batchSize) * 100);
-        setCurrentBatchProgress(progress);
+        // We'll use a chunked approach to avoid freezing the UI
+        const chunkSize = Math.min(Math.max(Math.floor(batchSize / 10), 1), 1000);
+        let processedUnits = 0;
         
-        if (processedUnits < batchSize) {
-          // Schedule next chunk with a small delay to allow UI updates
-          setTimeout(processChunk, 0);
-        } else {
-          // Finalize and display average results
-          const finalResults = {
-            throughput: +(results.throughput / batchSize).toFixed(1),
-            cycleTime: +(results.cycleTime / batchSize).toFixed(1),
-            utilization: +(results.utilization / batchSize).toFixed(1),
-            bottlenecks: Array.from(results.bottlenecks.entries())
-              .sort((a, b) => b[1] - a[1])
-              .slice(0, 3)
-              .map(([name]) => name)
-          };
+        const processChunk = () => {
+          const startTime = performance.now();
+          const endUnit = Math.min(processedUnits + chunkSize, batchSize);
           
-          setSimulationResults(finalResults);
-          setRunningBatch(false);
-          toast({
-            title: "Batch Simulation Complete",
-            description: `Processed ${batchSize} units successfully`,
-          });
-        }
-      };
-      
-      // Start the first chunk
-      processChunk();
-    } else {
-      // Run a single simulation
-      setTimeout(() => {
-        setSimulationResults(getMockSimulationResult());
-      }, 1000);
+          for (let i = processedUnits; i < endUnit; i++) {
+            // Generate mock simulation results for this unit
+            const mockResult = getMockSimulationResult();
+            
+            // Accumulate results
+            results.throughput += mockResult.throughput;
+            results.cycleTime += mockResult.cycleTime;
+            results.utilization += mockResult.utilization;
+            
+            // Track bottlenecks frequency
+            mockResult.bottlenecks.forEach(bottleneck => {
+              const count = results.bottlenecks.get(bottleneck) || 0;
+              results.bottlenecks.set(bottleneck, count + 1);
+            });
+          }
+          
+          processedUnits = endUnit;
+          const progress = Math.floor((processedUnits / batchSize) * 100);
+          setCurrentBatchProgress(progress);
+          
+          if (processedUnits < batchSize) {
+            // Schedule next chunk with a small delay to allow UI updates
+            setTimeout(processChunk, 0);
+          } else {
+            // Finalize and display average results
+            const finalResults = {
+              throughput: +(results.throughput / batchSize).toFixed(1),
+              cycleTime: +(results.cycleTime / batchSize).toFixed(1),
+              utilization: +(results.utilization / batchSize).toFixed(1),
+              bottlenecks: Array.from(results.bottlenecks.entries())
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 3)
+                .map(([name]) => name)
+            };
+            
+            setSimulationResults(finalResults);
+            setRunningBatch(false);
+            toast({
+              title: "Batch Simulation Complete",
+              description: `Processed ${batchSize} units successfully`,
+            });
+          }
+        };
+        
+        // Start the first chunk
+        processChunk();
+      } else {
+        // Run a single simulation
+        setTimeout(() => {
+          setSimulationResults(getMockSimulationResult());
+        }, 1000);
+      }
     }
+    // For play-by-play mode, the animation is handled in the FactoryEditor component
   };
 
   const getMockSimulationResult = () => {
@@ -121,6 +128,12 @@ const SimulationPanel = ({ isSimulating, setIsSimulating }: SimulationPanelProps
     setSimulationResults(null);
   };
 
+  const handleSimulationModeChange = (value: string) => {
+    if (value === "instant" || value === "play-by-play") {
+      setSimulationMode(value);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="p-4 border-b border-border">
@@ -130,6 +143,23 @@ const SimulationPanel = ({ isSimulating, setIsSimulating }: SimulationPanelProps
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-4">
           <Card className="p-4">
+            <h3 className="text-sm font-medium mb-3">Simulation Mode</h3>
+            <ToggleGroup 
+              type="single" 
+              value={simulationMode}
+              onValueChange={handleSimulationModeChange}
+              className="justify-start mb-4"
+            >
+              <ToggleGroupItem value="instant" className="flex gap-1.5 items-center">
+                <ZapIcon className="h-3.5 w-3.5" />
+                <span>Instant</span>
+              </ToggleGroupItem>
+              <ToggleGroupItem value="play-by-play" className="flex gap-1.5 items-center">
+                <TimerIcon className="h-3.5 w-3.5" />
+                <span>Play-by-Play</span>
+              </ToggleGroupItem>
+            </ToggleGroup>
+            
             <h3 className="text-sm font-medium mb-2">Simulation Controls</h3>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -147,20 +177,22 @@ const SimulationPanel = ({ isSimulating, setIsSimulating }: SimulationPanelProps
                 <span className="text-sm font-medium">{simulationSpeed}x</span>
               </div>
               
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Units:</span>
-                <div className="flex-1 mx-4">
-                  <Input
-                    type="number"
-                    min={1}
-                    max={100000}
-                    value={simulationUnits}
-                    onChange={(e) => setSimulationUnits(Math.max(1, parseInt(e.target.value) || 1))}
-                    disabled={isSimulating}
-                    className="h-8"
-                  />
+              {simulationMode === "instant" && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Units:</span>
+                  <div className="flex-1 mx-4">
+                    <Input
+                      type="number"
+                      min={1}
+                      max={100000}
+                      value={simulationUnits}
+                      onChange={(e) => setSimulationUnits(Math.max(1, parseInt(e.target.value) || 1))}
+                      disabled={isSimulating}
+                      className="h-8"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
               
               {runningBatch && (
                 <div className="w-full bg-secondary rounded-full h-2">
