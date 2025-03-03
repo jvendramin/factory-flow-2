@@ -1,10 +1,9 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
-import { PlayIcon, PauseIcon, StopIcon, SettingsIcon, LineChartIcon } from "lucide-react";
+import { PlayIcon, PauseIcon, SquareIcon, SettingsIcon, LineChartIcon } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface SimulationPanelProps {
@@ -91,7 +90,7 @@ const SimulationPanel = ({ isSimulating, setIsSimulating }: SimulationPanelProps
                       onClick={handleStopSimulation} 
                       className="flex-1"
                     >
-                      <StopIcon className="mr-2 h-4 w-4" />
+                      <SquareIcon className="mr-2 h-4 w-4" />
                       Stop
                     </Button>
                   </>
