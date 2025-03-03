@@ -11,6 +11,7 @@ const Index = () => {
   const { theme, setTheme } = useTheme();
   const [isSimulating, setIsSimulating] = useState(false);
   const [simulationMode, setSimulationMode] = useState<"instant" | "play-by-play">("instant");
+  const [simulationSpeed, setSimulationSpeed] = useState(1);
   const [currentUnitPosition, setCurrentUnitPosition] = useState<{ nodeId: string, progress: number } | null>(null);
 
   return (
@@ -36,6 +37,7 @@ const Index = () => {
           <FactoryEditor 
             isSimulating={isSimulating} 
             simulationMode={simulationMode}
+            simulationSpeed={simulationSpeed}
             onUnitPositionUpdate={setCurrentUnitPosition}
           />
         </div>

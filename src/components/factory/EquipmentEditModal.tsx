@@ -31,7 +31,12 @@ const EquipmentEditModal = ({
 
   React.useEffect(() => {
     if (equipment) {
-      setEditedEquipment({ ...equipment });
+      // Ensure maxCapacity has a default value of 1
+      const equipmentWithDefaults = {
+        ...equipment,
+        maxCapacity: equipment.maxCapacity ?? 1
+      };
+      setEditedEquipment(equipmentWithDefaults);
     }
   }, [equipment]);
 
@@ -132,6 +137,20 @@ const EquipmentEditModal = ({
           </div>
           
           <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="maxCapacity" className="text-right">
+              Concurrent Units
+            </Label>
+            <Input
+              id="maxCapacity"
+              type="number"
+              min="1"
+              value={editedEquipment.maxCapacity || 1}
+              onChange={(e) => handleNumberChange("maxCapacity", e.target.value)}
+              className="col-span-3"
+            />
+          </div>
+          
+          <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="throughput" className="text-right">
               Throughput (units/hr)
             </Label>
@@ -210,21 +229,6 @@ const EquipmentEditModal = ({
                 type="number"
                 value={editedEquipment.energy}
                 onChange={(e) => handleNumberChange("energy", e.target.value)}
-                className="col-span-3"
-              />
-            </div>
-          )}
-          
-          {editedEquipment.maxCapacity !== undefined && (
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="maxCapacity" className="text-right">
-                Max Capacity
-              </Label>
-              <Input
-                id="maxCapacity"
-                type="number"
-                value={editedEquipment.maxCapacity}
-                onChange={(e) => handleNumberChange("maxCapacity", e.target.value)}
                 className="col-span-3"
               />
             </div>

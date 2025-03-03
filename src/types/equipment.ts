@@ -12,6 +12,17 @@ export interface Equipment {
   };
   maintenanceInterval?: number; // in hours
   setupTime?: number; // in minutes
-  maxCapacity?: number;
+  maxCapacity?: number; // concurrent units that can be processed
   energy?: number; // energy consumption
+}
+
+export interface FlowEdge {
+  id: string;
+  source: string;
+  target: string;
+  transitTime?: number; // in seconds
+  label?: string;
+  animated?: boolean;
+  style?: Record<string, any>;
+  type?: string;
 }

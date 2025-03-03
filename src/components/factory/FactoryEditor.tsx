@@ -17,17 +17,24 @@ import ReactFlow, {
   NodeChange,
   EdgeChange,
   ConnectionMode,
+  EdgeTypes,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { toast } from '@/components/ui/use-toast';
 import EquipmentNode from './nodes/EquipmentNode';
+import ConfigurableEdge from './edges/ConfigurableEdge';
 import { Equipment } from '@/types/equipment';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ArrowRightCircle } from 'lucide-react';
+import LiveStatsPanel from './LiveStatsPanel';
 
-// Define node types
+// Define node and edge types
 const nodeTypes: NodeTypes = {
   equipment: EquipmentNode,
+};
+
+const edgeTypes: EdgeTypes = {
+  default: ConfigurableEdge,
 };
 
 interface FactoryEditorProps {
@@ -53,6 +60,7 @@ const FactoryEditor = ({
   
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const lastTimestamp = useRef<number>(0);
   
   // For play-by-play simulation
   useEffect(() => {
@@ -91,12 +99,15 @@ const FactoryEditor = ({
   const startPlayByPlaySimulation = useCallback(() => {
     // First, identify the flow path by traversing edges
     const flowPath: string[] = [];
-    const edgeMap = new Map<string, string[]>();
+    const edgeMap = new Map<string, { targetId: string, transitTime: number }[]>();
     
-    // Create a map of source node to target nodes
+    // Create a map of source node to target nodes with transit times
     edges.forEach(edge => {
       const sources = edgeMap.get(edge.source) || [];
-      sources.push(edge.target);
+      sources.push({ 
+        targetId: edge.target, 
+        transitTime: edge.data?.transitTime || 0 
+      });
       edgeMap.set(edge.source, sources);
     });
     
@@ -113,20 +124,26 @@ const FactoryEditor = ({
       return;
     }
     
-    // Traverse the flow to create a path
-    let currentNodeId = startNodeId;
-    flowPath.push(currentNodeId);
+    // Traverse the flow to create a path with transit times
+    type PathStep = { nodeId: string, transitTime?: number };
+    const fullPath: PathStep[] = [{ nodeId: startNodeId }];
     
     // Simple traversal for linear flows
+    let currentNodeId = startNodeId;
     while (edgeMap.has(currentNodeId)) {
       const nextNodes = edgeMap.get(currentNodeId) || [];
       if (nextNodes.length === 0) break;
+      
       // For simplicity, we take the first target (linear flow assumption)
-      currentNodeId = nextNodes[0];
-      flowPath.push(currentNodeId);
+      const { targetId, transitTime } = nextNodes[0];
+      fullPath.push({ 
+        nodeId: targetId,
+        transitTime
+      });
+      currentNodeId = targetId;
     }
     
-    if (flowPath.length < 2) {
+    if (fullPath.length < 2) {
       toast({
         title: "Simulation Error",
         description: "Your process needs at least two connected equipment to run a simulation.",
@@ -138,11 +155,26 @@ const FactoryEditor = ({
     // Set up the animation
     let currentPathIndex = 0;
     let progressWithinNode = 0;
+    let inTransit = false;
+    let transitProgress = 0;
     const nodeDataMap = new Map(nodes.map(n => [n.id, n.data]));
+    
+    lastTimestamp.current = 0;
     
     // Animation loop
     const animate = (timestamp: number) => {
-      if (currentPathIndex >= flowPath.length) {
+      // Initialize the timestamp on first call
+      if (lastTimestamp.current === 0) {
+        lastTimestamp.current = timestamp;
+        animationFrameRef.current = requestAnimationFrame(animate);
+        return;
+      }
+      
+      // Calculate time delta in seconds
+      const delta = (timestamp - lastTimestamp.current) / 1000;
+      lastTimestamp.current = timestamp;
+      
+      if (currentPathIndex >= fullPath.length) {
         // Simulation complete
         toast({
           title: "Simulation Complete",
@@ -150,30 +182,39 @@ const FactoryEditor = ({
         });
         
         // Generate and display results
-        const avgCycleTime = flowPath.reduce((total, nodeId) => {
-          const nodeData = nodeDataMap.get(nodeId);
-          return total + (nodeData?.cycleTime || 0);
+        const avgCycleTime = fullPath.reduce((total, step) => {
+          const nodeData = nodeDataMap.get(step.nodeId);
+          return total + (nodeData?.cycleTime || 0) + (step.transitTime || 0);
         }, 0);
         
         const throughput = Math.floor(3600 / avgCycleTime);
         
         // Find bottleneck (node with highest cycle time)
-        let bottleneckId = flowPath[0];
+        let bottleneckId = fullPath[0].nodeId;
         let maxCycleTime = 0;
         
-        flowPath.forEach(nodeId => {
-          const cycleTime = nodeDataMap.get(nodeId)?.cycleTime || 0;
-          if (cycleTime > maxCycleTime) {
-            maxCycleTime = cycleTime;
-            bottleneckId = nodeId;
+        fullPath.forEach(step => {
+          const nodeData = nodeDataMap.get(step.nodeId);
+          const cycleTime = nodeData?.cycleTime || 0;
+          const maxCapacity = nodeData?.maxCapacity || 1;
+          const adjustedCycleTime = maxCapacity > 1 ? cycleTime / maxCapacity : cycleTime;
+          
+          if (adjustedCycleTime > maxCycleTime) {
+            maxCycleTime = adjustedCycleTime;
+            bottleneckId = step.nodeId;
           }
         });
         
         // Set utilization values for all nodes
         setNodes(nds => 
           nds.map(node => {
-            const nodeCycleTime = nodeDataMap.get(node.id)?.cycleTime || 0;
-            const utilization = Math.min(100, Math.round((nodeCycleTime / maxCycleTime) * 100));
+            const nodeData = nodeDataMap.get(node.id);
+            if (!nodeData) return node;
+            
+            const nodeCycleTime = nodeData.cycleTime || 0;
+            const maxCapacity = nodeData.maxCapacity || 1;
+            const adjustedCycleTime = maxCapacity > 1 ? nodeCycleTime / maxCapacity : nodeCycleTime;
+            const utilization = Math.min(100, Math.round((adjustedCycleTime / maxCycleTime) * 100));
             
             return {
               ...node,
@@ -190,18 +231,53 @@ const FactoryEditor = ({
         return;
       }
       
-      const currentNodeId = flowPath[currentPathIndex];
+      // Handle transit between nodes
+      if (inTransit) {
+        const transitTime = fullPath[currentPathIndex].transitTime || 0;
+        
+        if (transitTime <= 0) {
+          // Zero transit time, skip directly to next node
+          inTransit = false;
+        } else {
+          // Calculate transit progress
+          const transitStep = delta * simulationSpeed / transitTime;
+          transitProgress += transitStep;
+          
+          // Update UI to show transit if needed
+          // For now we just skip to the next node when transit completes
+          if (transitProgress >= 1) {
+            inTransit = false;
+            transitProgress = 0;
+          } else {
+            // Still in transit
+            animationFrameRef.current = requestAnimationFrame(animate);
+            return;
+          }
+        }
+      }
+      
+      const currentStep = fullPath[currentPathIndex];
+      const currentNodeId = currentStep.nodeId;
       const currentNodeData = nodeDataMap.get(currentNodeId);
       
       if (!currentNodeData) {
+        // Node not found, skip to next
         currentPathIndex++;
-        animate(timestamp);
+        inTransit = true;
+        transitProgress = 0;
+        animationFrameRef.current = requestAnimationFrame(animate);
         return;
       }
       
       // Calculate how much to progress based on cycle time and simulation speed
       const cycleDuration = currentNodeData.cycleTime * 1000 / simulationSpeed; // Convert to ms
-      const stepSize = 1 / cycleDuration;
+      
+      // Account for concurrent capacity
+      const maxCapacity = currentNodeData.maxCapacity || 1;
+      const adjustedCycleDuration = cycleDuration / maxCapacity;
+      
+      // Calculate progress step based on frame delta
+      const stepSize = delta * 1000 / adjustedCycleDuration;
       progressWithinNode += stepSize;
       
       // Update node visualization
@@ -220,10 +296,12 @@ const FactoryEditor = ({
       setCurrentUnitPosition({ nodeId: currentNodeId, progress: progressWithinNode });
       if (onUnitPositionUpdate) onUnitPositionUpdate({ nodeId: currentNodeId, progress: progressWithinNode });
       
-      // Move to next node when done with current one
+      // Move to transit phase when done with current node
       if (progressWithinNode >= 1) {
         progressWithinNode = 0;
         currentPathIndex++;
+        inTransit = true;
+        transitProgress = 0;
       }
       
       // Continue animation
@@ -239,7 +317,13 @@ const FactoryEditor = ({
   }, []);
   
   const onConnect = useCallback((params: Connection) => {
-    setEdges((eds) => addEdge(params, eds));
+    // Add transit time data to new edges
+    setEdges((eds) => 
+      addEdge({ 
+        ...params, 
+        data: { transitTime: 0 } 
+      }, eds)
+    );
   }, [setEdges]);
 
   const onNodeChanges = useCallback((changes: NodeChange[]) => {
@@ -252,28 +336,23 @@ const FactoryEditor = ({
     onEdgesChange(changes);
   }, [onEdgesChange]);
 
-  const onConnectStart = useCallback(() => {
-    // Handle connection start
+  const onConnectStart = useCallback((event: any, { nodeId }: { nodeId: string }) => {
+    // Store the source node for later use
+    if (nodeId) {
+      setPendingConnection({ source: nodeId, target: '', sourceHandle: null, targetHandle: null });
+    }
   }, []);
 
   const onConnectEnd = useCallback((event: MouseEvent) => {
-    // If there's no valid target node, show connection alert
+    // Only trigger the dialog when there's no valid target node
     const targetIsPane = (event.target as Element).classList.contains('react-flow__pane');
-    if (targetIsPane) {
-      // Get connection source
-      const edgeExists = edges.some(e => e.source === nodes[nodes.length - 1]?.id);
-      if (!edgeExists && nodes.length > 0) {
-        const sourceNodeId = nodes[nodes.length - 1].id;
-        setPendingConnection({
-          source: sourceNodeId,
-          target: '',
-          sourceHandle: null,
-          targetHandle: null,
-        });
-        setShowConnectionAlert(true);
-      }
+    if (targetIsPane && pendingConnection?.source) {
+      setShowConnectionAlert(true);
+    } else {
+      // Clear pending connection otherwise
+      setPendingConnection(null);
     }
-  }, [nodes, edges]);
+  }, [pendingConnection]);
 
   const onDrop = useCallback(
     (event: React.DragEvent) => {
@@ -303,7 +382,10 @@ const FactoryEditor = ({
         id: `equipment-${Date.now()}`,
         type: 'equipment',
         position,
-        data: { ...equipmentData },
+        data: { 
+          ...equipmentData,
+          maxCapacity: equipmentData.maxCapacity || 1 
+        },
       };
 
       setNodes((nds) => nds.concat(newNode));
@@ -412,15 +494,19 @@ const FactoryEditor = ({
       id: `equipment-${Date.now()}`,
       type: 'equipment',
       position,
-      data: { ...equipment },
+      data: { 
+        ...equipment,
+        maxCapacity: equipment.maxCapacity || 1  
+      },
     };
     
     setNodes((nds) => nds.concat(newNode));
     
-    // Create the connection
+    // Create the connection with transit time data
     const connection = {
       ...pendingConnection,
       target: newNode.id,
+      data: { transitTime: 0 }
     };
     
     setEdges((eds) => addEdge(connection, eds));
@@ -435,33 +521,39 @@ const FactoryEditor = ({
   }, [pendingConnection, findBestNodePosition, setNodes, setEdges]);
 
   return (
-    <div className="w-full h-full" ref={reactFlowWrapper}>
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodeChanges}
-        onEdgesChange={onEdgeChanges}
-        onConnect={onConnect}
-        onConnectStart={onConnectStart}
-        onConnectEnd={onConnectEnd}
-        onInit={onInit}
-        onDrop={onDrop}
-        onDragOver={onDragOver}
-        onDragLeave={onDragLeave}
-        nodeTypes={nodeTypes}
-        fitView
-        connectionMode={ConnectionMode.Loose}
-        attributionPosition="bottom-right"
-        className="bg-muted/20"
-      >
-        <Background />
-        <Controls />
-        <MiniMap 
-          nodeColor={(node) => {
-            return isSimulating && node.data?.bottleneck ? '#ef4444' : '#1D4ED8';
-          }}
-        />
-      </ReactFlow>
+    <div className="w-full h-full flex flex-col">
+      <div className="px-4 pt-2">
+        <LiveStatsPanel nodes={nodes} edges={edges} />
+      </div>
+      <div className="flex-1" ref={reactFlowWrapper}>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodeChanges}
+          onEdgesChange={onEdgeChanges}
+          onConnect={onConnect}
+          onConnectStart={onConnectStart}
+          onConnectEnd={onConnectEnd}
+          onInit={onInit}
+          onDrop={onDrop}
+          onDragOver={onDragOver}
+          onDragLeave={onDragLeave}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          fitView
+          connectionMode={ConnectionMode.Loose}
+          attributionPosition="bottom-right"
+          className="bg-muted/20"
+        >
+          <Background />
+          <Controls />
+          <MiniMap 
+            nodeColor={(node) => {
+              return isSimulating && node.data?.bottleneck ? '#ef4444' : '#1D4ED8';
+            }}
+          />
+        </ReactFlow>
+      </div>
       
       <AlertDialog open={showConnectionAlert} onOpenChange={setShowConnectionAlert}>
         <AlertDialogContent>
@@ -473,7 +565,7 @@ const FactoryEditor = ({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setPendingConnection(null)}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => {
               toast({
                 title: "Select from sidebar",
