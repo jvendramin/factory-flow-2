@@ -11,16 +11,18 @@ interface EquipmentNodeData {
   dimensions: { width: number; height: number };
   bottleneck?: boolean;
   utilization?: number;
+  placeholder?: boolean;
 }
 
 const EquipmentNode = ({ data, isConnectable }: NodeProps<EquipmentNodeData>) => {
-  const { name, type, cycleTime, throughput, bottleneck, utilization } = data;
+  const { name, type, cycleTime, throughput, bottleneck, utilization, placeholder } = data;
   
   return (
     <div 
       className={cn(
         "border rounded-md p-3 shadow-sm bg-background min-w-40",
         bottleneck ? "border-red-500" : "border-border",
+        placeholder ? "border-dashed border-2 bg-background/80" : ""
       )}
     >
       <div className="flex flex-col gap-1">

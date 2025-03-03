@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -5,6 +6,8 @@ import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { PlayIcon, PauseIcon, SquareIcon, SettingsIcon, LineChartIcon } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/use-toast";
 
 interface SimulationPanelProps {
   isSimulating: boolean;
@@ -13,6 +16,9 @@ interface SimulationPanelProps {
 
 const SimulationPanel = ({ isSimulating, setIsSimulating }: SimulationPanelProps) => {
   const [simulationSpeed, setSimulationSpeed] = useState(1);
+  const [simulationUnits, setSimulationUnits] = useState(1);
+  const [runningBatch, setRunningBatch] = useState(false);
+  const [currentBatchProgress, setCurrentBatchProgress] = useState(0);
   const [simulationResults, setSimulationResults] = useState<{
     throughput: number;
     cycleTime: number;
@@ -23,20 +29,95 @@ const SimulationPanel = ({ isSimulating, setIsSimulating }: SimulationPanelProps
   const handleStartSimulation = () => {
     setIsSimulating(true);
     
-    // In a real app, this would trigger the actual simulation
-    // This is just a mock result for demonstration
-    setTimeout(() => {
-      setSimulationResults({
-        throughput: 120,
-        cycleTime: 35.2,
-        utilization: 78.3,
-        bottlenecks: ["Assembly Station 2"],
-      });
-    }, 1000);
+    if (simulationUnits > 1) {
+      setRunningBatch(true);
+      setCurrentBatchProgress(0);
+      
+      // Start batch simulation with progress updates
+      const batchSize = simulationUnits;
+      let results = {
+        throughput: 0,
+        cycleTime: 0,
+        utilization: 0,
+        bottlenecks: new Map<string, number>()
+      };
+      
+      // We'll use a chunked approach to avoid freezing the UI
+      const chunkSize = Math.min(Math.max(Math.floor(batchSize / 10), 1), 1000);
+      let processedUnits = 0;
+      
+      const processChunk = () => {
+        const startTime = performance.now();
+        const endUnit = Math.min(processedUnits + chunkSize, batchSize);
+        
+        for (let i = processedUnits; i < endUnit; i++) {
+          // Generate mock simulation results for this unit
+          const mockResult = getMockSimulationResult();
+          
+          // Accumulate results
+          results.throughput += mockResult.throughput;
+          results.cycleTime += mockResult.cycleTime;
+          results.utilization += mockResult.utilization;
+          
+          // Track bottlenecks frequency
+          mockResult.bottlenecks.forEach(bottleneck => {
+            const count = results.bottlenecks.get(bottleneck) || 0;
+            results.bottlenecks.set(bottleneck, count + 1);
+          });
+        }
+        
+        processedUnits = endUnit;
+        const progress = Math.floor((processedUnits / batchSize) * 100);
+        setCurrentBatchProgress(progress);
+        
+        if (processedUnits < batchSize) {
+          // Schedule next chunk with a small delay to allow UI updates
+          setTimeout(processChunk, 0);
+        } else {
+          // Finalize and display average results
+          const finalResults = {
+            throughput: +(results.throughput / batchSize).toFixed(1),
+            cycleTime: +(results.cycleTime / batchSize).toFixed(1),
+            utilization: +(results.utilization / batchSize).toFixed(1),
+            bottlenecks: Array.from(results.bottlenecks.entries())
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 3)
+              .map(([name]) => name)
+          };
+          
+          setSimulationResults(finalResults);
+          setRunningBatch(false);
+          toast({
+            title: "Batch Simulation Complete",
+            description: `Processed ${batchSize} units successfully`,
+          });
+        }
+      };
+      
+      // Start the first chunk
+      processChunk();
+    } else {
+      // Run a single simulation
+      setTimeout(() => {
+        setSimulationResults(getMockSimulationResult());
+      }, 1000);
+    }
+  };
+
+  const getMockSimulationResult = () => {
+    // Add some randomness to make the results look realistic
+    return {
+      throughput: 115 + Math.random() * 10,
+      cycleTime: 33 + Math.random() * 5,
+      utilization: 75 + Math.random() * 7,
+      bottlenecks: ["Assembly Station 2", "CNC Milling Machine", "Packaging Machine"].slice(0, 1 + Math.floor(Math.random() * 2)),
+    };
   };
 
   const handleStopSimulation = () => {
     setIsSimulating(false);
+    setRunningBatch(false);
+    setCurrentBatchProgress(0);
     setSimulationResults(null);
   };
 
@@ -65,6 +146,31 @@ const SimulationPanel = ({ isSimulating, setIsSimulating }: SimulationPanelProps
                 </div>
                 <span className="text-sm font-medium">{simulationSpeed}x</span>
               </div>
+              
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Units:</span>
+                <div className="flex-1 mx-4">
+                  <Input
+                    type="number"
+                    min={1}
+                    max={100000}
+                    value={simulationUnits}
+                    onChange={(e) => setSimulationUnits(Math.max(1, parseInt(e.target.value) || 1))}
+                    disabled={isSimulating}
+                    className="h-8"
+                  />
+                </div>
+              </div>
+              
+              {runningBatch && (
+                <div className="w-full bg-secondary rounded-full h-2">
+                  <div 
+                    className="bg-primary h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${currentBatchProgress}%` }}
+                  ></div>
+                  <div className="text-xs text-center mt-1">{currentBatchProgress}% complete</div>
+                </div>
+              )}
               
               <div className="flex space-x-2">
                 {!isSimulating ? (
@@ -102,7 +208,9 @@ const SimulationPanel = ({ isSimulating, setIsSimulating }: SimulationPanelProps
           {simulationResults && (
             <Card className="p-4">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-medium">Simulation Results</h3>
+                <h3 className="text-sm font-medium">
+                  {simulationUnits > 1 ? `Results (${simulationUnits} units)` : 'Simulation Results'}
+                </h3>
                 <Button variant="ghost" size="icon">
                   <LineChartIcon className="h-4 w-4" />
                 </Button>

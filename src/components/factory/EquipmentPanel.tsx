@@ -5,14 +5,24 @@ import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { equipmentLibrary } from "@/data/equipment";
 import EquipmentCard from "./EquipmentCard";
+import { Equipment } from '@/types/equipment';
 
 const EquipmentPanel = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [equipmentItems, setEquipmentItems] = useState(equipmentLibrary);
   
-  const filteredEquipment = equipmentLibrary.filter(item =>
+  const filteredEquipment = equipmentItems.filter(item =>
     item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     item.type.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleEquipmentUpdated = (updatedEquipment: Equipment) => {
+    setEquipmentItems(prev => 
+      prev.map(item => 
+        item.id === updatedEquipment.id ? updatedEquipment : item
+      )
+    );
+  };
   
   return (
     <div className="flex flex-col h-full">
@@ -32,7 +42,11 @@ const EquipmentPanel = () => {
       <ScrollArea className="flex-1">
         <div className="p-4 grid gap-2">
           {filteredEquipment.map((equipment) => (
-            <EquipmentCard key={equipment.id} equipment={equipment} />
+            <EquipmentCard 
+              key={equipment.id} 
+              equipment={equipment} 
+              onEquipmentUpdated={handleEquipmentUpdated}
+            />
           ))}
         </div>
       </ScrollArea>
