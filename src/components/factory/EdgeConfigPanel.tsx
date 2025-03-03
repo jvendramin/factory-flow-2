@@ -10,9 +10,10 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Settings } from "lucide-react";
 import { Edge, useReactFlow } from "reactflow";
+import { FlowEdge } from "@/types/equipment";
 
 interface EdgeConfigPanelProps {
-  edge: Edge;
+  edge: Partial<Edge> & Pick<FlowEdge, 'id'>;
 }
 
 const EdgeConfigPanel = ({ edge }: EdgeConfigPanelProps) => {

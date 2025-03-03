@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import ReactFlow, {
   Background,
@@ -28,7 +27,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ArrowRightCircle } from 'lucide-react';
 import LiveStatsPanel from './LiveStatsPanel';
 
-// Define node and edge types
 const nodeTypes: NodeTypes = {
   equipment: EquipmentNode,
 };
@@ -57,24 +55,22 @@ const FactoryEditor = ({
   const [showConnectionAlert, setShowConnectionAlert] = useState(false);
   const [pendingConnection, setPendingConnection] = useState<Connection | null>(null);
   const [currentUnitPosition, setCurrentUnitPosition] = useState<{ nodeId: string, progress: number } | null>(null);
+  const [showGrid, setShowGrid] = useState(true);
+  const [snapToGrid, setSnapToGrid] = useState(true);
   
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastTimestamp = useRef<number>(0);
   
-  // For play-by-play simulation
   useEffect(() => {
     if (isSimulating && simulationMode === "play-by-play") {
-      // Start play-by-play animation
       startPlayByPlaySimulation();
     } else if (!isSimulating && animationFrameRef.current) {
-      // Cancel animation if simulation stops
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
       setCurrentUnitPosition(null);
       if (onUnitPositionUpdate) onUnitPositionUpdate(null);
       
-      // Reset any visual indicators on nodes
       setNodes(nds => 
         nds.map(node => ({
           ...node,
@@ -95,13 +91,10 @@ const FactoryEditor = ({
     };
   }, [isSimulating, simulationMode, setNodes, onUnitPositionUpdate]);
   
-  // Play-by-play simulation logic
   const startPlayByPlaySimulation = useCallback(() => {
-    // First, identify the flow path by traversing edges
     const flowPath: string[] = [];
     const edgeMap = new Map<string, { targetId: string, transitTime: number }[]>();
     
-    // Create a map of source node to target nodes with transit times
     edges.forEach(edge => {
       const sources = edgeMap.get(edge.source) || [];
       sources.push({ 
@@ -111,7 +104,6 @@ const FactoryEditor = ({
       edgeMap.set(edge.source, sources);
     });
     
-    // Find the first node (one with no incoming edges)
     const allTargets = new Set(edges.map(e => e.target));
     const startNodeId = nodes.find(n => !allTargets.has(n.id))?.id;
     
@@ -124,17 +116,13 @@ const FactoryEditor = ({
       return;
     }
     
-    // Traverse the flow to create a path with transit times
-    type PathStep = { nodeId: string, transitTime?: number };
     const fullPath: PathStep[] = [{ nodeId: startNodeId }];
     
-    // Simple traversal for linear flows
     let currentNodeId = startNodeId;
     while (edgeMap.has(currentNodeId)) {
       const nextNodes = edgeMap.get(currentNodeId) || [];
       if (nextNodes.length === 0) break;
       
-      // For simplicity, we take the first target (linear flow assumption)
       const { targetId, transitTime } = nextNodes[0];
       fullPath.push({ 
         nodeId: targetId,
@@ -152,7 +140,6 @@ const FactoryEditor = ({
       return;
     }
     
-    // Set up the animation
     let currentPathIndex = 0;
     let progressWithinNode = 0;
     let inTransit = false;
@@ -161,27 +148,22 @@ const FactoryEditor = ({
     
     lastTimestamp.current = 0;
     
-    // Animation loop
     const animate = (timestamp: number) => {
-      // Initialize the timestamp on first call
       if (lastTimestamp.current === 0) {
         lastTimestamp.current = timestamp;
         animationFrameRef.current = requestAnimationFrame(animate);
         return;
       }
       
-      // Calculate time delta in seconds
       const delta = (timestamp - lastTimestamp.current) / 1000;
       lastTimestamp.current = timestamp;
       
       if (currentPathIndex >= fullPath.length) {
-        // Simulation complete
         toast({
           title: "Simulation Complete",
           description: "Unit has completed the process flow."
         });
         
-        // Generate and display results
         const avgCycleTime = fullPath.reduce((total, step) => {
           const nodeData = nodeDataMap.get(step.nodeId);
           return total + (nodeData?.cycleTime || 0) + (step.transitTime || 0);
@@ -189,7 +171,6 @@ const FactoryEditor = ({
         
         const throughput = Math.floor(3600 / avgCycleTime);
         
-        // Find bottleneck (node with highest cycle time)
         let bottleneckId = fullPath[0].nodeId;
         let maxCycleTime = 0;
         
@@ -205,7 +186,6 @@ const FactoryEditor = ({
           }
         });
         
-        // Set utilization values for all nodes
         setNodes(nds => 
           nds.map(node => {
             const nodeData = nodeDataMap.get(node.id);
@@ -231,27 +211,73 @@ const FactoryEditor = ({
         return;
       }
       
-      // Handle transit between nodes
       if (inTransit) {
-        const transitTime = fullPath[currentPathIndex].transitTime || 0;
+        const currentStep = fullPath[currentPathIndex];
+        const prevStep = fullPath[currentPathIndex - 1];
         
-        if (transitTime <= 0) {
-          // Zero transit time, skip directly to next node
+        if (!prevStep) {
           inTransit = false;
         } else {
-          // Calculate transit progress
-          const transitStep = delta * simulationSpeed / transitTime;
-          transitProgress += transitStep;
+          const transitTime = currentStep.transitTime || 0;
           
-          // Update UI to show transit if needed
-          // For now we just skip to the next node when transit completes
-          if (transitProgress >= 1) {
+          if (transitTime <= 0) {
             inTransit = false;
-            transitProgress = 0;
+            activeEdgeRef.current = null;
+            
+            setEdges(eds => 
+              eds.map(e => ({
+                ...e,
+                data: {
+                  ...e.data,
+                  transitInProgress: false,
+                  transitProgress: 0
+                }
+              }))
+            );
           } else {
-            // Still in transit
-            animationFrameRef.current = requestAnimationFrame(animate);
-            return;
+            const transitStep = delta * simulationSpeed / transitTime;
+            transitProgress += transitStep;
+            
+            const edgeId = edges.find(
+              e => e.source === prevStep.nodeId && e.target === currentStep.nodeId
+            )?.id;
+            
+            if (edgeId) {
+              activeEdgeRef.current = edgeId;
+              
+              setEdges(eds => 
+                eds.map(e => ({
+                  ...e,
+                  data: {
+                    ...e.data,
+                    transitInProgress: e.id === edgeId,
+                    transitProgress: e.id === edgeId ? transitProgress : 0
+                  }
+                }))
+              );
+            }
+            
+            if (onUnitPositionUpdate) onUnitPositionUpdate(null);
+            
+            if (transitProgress >= 1) {
+              inTransit = false;
+              transitProgress = 0;
+              activeEdgeRef.current = null;
+              
+              setEdges(eds => 
+                eds.map(e => ({
+                  ...e,
+                  data: {
+                    ...e.data,
+                    transitInProgress: false,
+                    transitProgress: 0
+                  }
+                }))
+              );
+            } else {
+              animationFrameRef.current = requestAnimationFrame(animate);
+              return;
+            }
           }
         }
       }
@@ -261,7 +287,6 @@ const FactoryEditor = ({
       const currentNodeData = nodeDataMap.get(currentNodeId);
       
       if (!currentNodeData) {
-        // Node not found, skip to next
         currentPathIndex++;
         inTransit = true;
         transitProgress = 0;
@@ -269,18 +294,13 @@ const FactoryEditor = ({
         return;
       }
       
-      // Calculate how much to progress based on cycle time and simulation speed
-      const cycleDuration = currentNodeData.cycleTime * 1000 / simulationSpeed; // Convert to ms
-      
-      // Account for concurrent capacity
+      const cycleDuration = currentNodeData.cycleTime * 1000 / simulationSpeed;
       const maxCapacity = currentNodeData.maxCapacity || 1;
       const adjustedCycleDuration = cycleDuration / maxCapacity;
       
-      // Calculate progress step based on frame delta
       const stepSize = delta * 1000 / adjustedCycleDuration;
       progressWithinNode += stepSize;
       
-      // Update node visualization
       setNodes(nds => 
         nds.map(node => ({
           ...node,
@@ -292,23 +312,32 @@ const FactoryEditor = ({
         }))
       );
       
-      // Update current position for UI/tracking
       setCurrentUnitPosition({ nodeId: currentNodeId, progress: progressWithinNode });
       if (onUnitPositionUpdate) onUnitPositionUpdate({ nodeId: currentNodeId, progress: progressWithinNode });
       
-      // Move to transit phase when done with current node
       if (progressWithinNode >= 1) {
         progressWithinNode = 0;
         currentPathIndex++;
         inTransit = true;
         transitProgress = 0;
+        
+        if (currentPathIndex < fullPath.length) {
+          const currentNodeId = fullPath[currentPathIndex - 1].nodeId;
+          const nextNodeId = fullPath[currentPathIndex].nodeId;
+          
+          const edgeId = edges.find(
+            e => e.source === currentNodeId && e.target === nextNodeId
+          )?.id;
+          
+          if (edgeId) {
+            activeEdgeRef.current = edgeId;
+          }
+        }
       }
       
-      // Continue animation
       animationFrameRef.current = requestAnimationFrame(animate);
     };
     
-    // Start the animation
     animationFrameRef.current = requestAnimationFrame(animate);
   }, [edges, nodes, setNodes, simulationSpeed, onUnitPositionUpdate]);
   
@@ -317,7 +346,6 @@ const FactoryEditor = ({
   }, []);
   
   const onConnect = useCallback((params: Connection) => {
-    // Add transit time data to new edges
     setEdges((eds) => 
       addEdge({ 
         ...params, 
@@ -327,32 +355,22 @@ const FactoryEditor = ({
   }, [setEdges]);
 
   const onNodeChanges = useCallback((changes: NodeChange[]) => {
-    // Custom node change handling to support placeholder
     onNodesChange(changes);
   }, [onNodesChange]);
 
   const onEdgeChanges = useCallback((changes: EdgeChange[]) => {
-    // Custom edge change handling
     onEdgesChange(changes);
   }, [onEdgesChange]);
 
   const onConnectStart = useCallback((event: any, { nodeId }: { nodeId: string }) => {
-    // Store the source node for later use
     if (nodeId) {
       setPendingConnection({ source: nodeId, target: '', sourceHandle: null, targetHandle: null });
     }
   }, []);
 
   const onConnectEnd = useCallback((event: MouseEvent) => {
-    // Only trigger the dialog when there's no valid target node
-    const targetIsPane = (event.target as Element).classList.contains('react-flow__pane');
-    if (targetIsPane && pendingConnection?.source) {
-      setShowConnectionAlert(true);
-    } else {
-      // Clear pending connection otherwise
-      setPendingConnection(null);
-    }
-  }, [pendingConnection]);
+    setPendingConnection(null);
+  }, []);
 
   const onDrop = useCallback(
     (event: React.DragEvent) => {
@@ -363,21 +381,18 @@ const FactoryEditor = ({
         return;
       }
 
-      // Get equipment data from drag event
       const equipmentData = JSON.parse(event.dataTransfer.getData('application/reactflow'));
       
       if (typeof equipmentData.type !== 'string') {
         return;
       }
 
-      // Get drop position within the pane
       const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
       const position = reactFlowInstance.project({
         x: event.clientX - reactFlowBounds.left,
         y: event.clientY - reactFlowBounds.top,
       });
 
-      // Create a new node
       const newNode = {
         id: `equipment-${Date.now()}`,
         type: 'equipment',
@@ -406,20 +421,17 @@ const FactoryEditor = ({
     }
     
     try {
-      // Get equipment data from drag event
       const jsonData = event.dataTransfer.getData('application/reactflow');
       if (!jsonData) return;
       
       const equipmentData = JSON.parse(jsonData);
       
-      // Calculate placement position
       const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
       const position = reactFlowInstance.project({
         x: event.clientX - reactFlowBounds.left,
         y: event.clientY - reactFlowBounds.top,
       });
       
-      // Show placeholder node
       if (!placeholderNode) {
         const placeholder = {
           id: 'placeholder',
@@ -435,7 +447,6 @@ const FactoryEditor = ({
         setPlaceholderNode(placeholder);
         setNodes(nds => [...nds.filter(n => n.id !== 'placeholder'), placeholder]);
       } else {
-        // Update placeholder position
         setNodes(nds => 
           nds.map(n => {
             if (n.id === 'placeholder') {
@@ -449,13 +460,11 @@ const FactoryEditor = ({
         );
       }
     } catch (err) {
-      // Silent error for drag over - this is expected if no data is available yet
     }
     
   }, [reactFlowInstance, placeholderNode, setNodes]);
   
   const onDragLeave = useCallback(() => {
-    // Remove placeholder node when drag leaves
     if (placeholderNode) {
       setNodes(nds => nds.filter(n => n.id !== 'placeholder'));
       setPlaceholderNode(null);
@@ -463,7 +472,6 @@ const FactoryEditor = ({
   }, [placeholderNode, setNodes]);
   
   const findBestNodePosition = useCallback((): XYPosition => {
-    // Find the rightmost node
     let maxX = 0;
     let avgY = 0;
     
@@ -480,7 +488,6 @@ const FactoryEditor = ({
     
     avgY = avgY / nodes.length;
     
-    // Position the new node to the right with some spacing
     return { x: maxX + 250, y: avgY };
   }, [nodes]);
   
@@ -489,7 +496,6 @@ const FactoryEditor = ({
     
     const position = findBestNodePosition();
     
-    // Create a new node at the calculated position
     const newNode = {
       id: `equipment-${Date.now()}`,
       type: 'equipment',
@@ -502,7 +508,6 @@ const FactoryEditor = ({
     
     setNodes((nds) => nds.concat(newNode));
     
-    // Create the connection with transit time data
     const connection = {
       ...pendingConnection,
       target: newNode.id,
@@ -519,7 +524,26 @@ const FactoryEditor = ({
     setPendingConnection(null);
     setShowConnectionAlert(false);
   }, [pendingConnection, findBestNodePosition, setNodes, setEdges]);
-
+  
+  const onNodeDragStop = useCallback((event: any, node: Node) => {
+    if (!snapToGrid) return;
+    
+    const newNodes = nodes.map(n => {
+      if (n.id === node.id) {
+        return {
+          ...n,
+          position: {
+            x: Math.round(n.position.x / 20) * 20,
+            y: Math.round(n.position.y / 20) * 20
+          }
+        };
+      }
+      return n;
+    });
+    
+    setNodes(newNodes);
+  }, [nodes, setNodes, snapToGrid]);
+  
   return (
     <div className="w-full h-full flex flex-col">
       <div className="px-4 pt-2">
@@ -538,14 +562,28 @@ const FactoryEditor = ({
           onDrop={onDrop}
           onDragOver={onDragOver}
           onDragLeave={onDragLeave}
+          onNodeDragStop={onNodeDragStop}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
+          defaultEdgeOptions={{
+            type: 'default'
+          }}
+          connectionLineType="straight"
           fitView
           connectionMode={ConnectionMode.Loose}
           attributionPosition="bottom-right"
           className="bg-muted/20"
+          snapToGrid={snapToGrid}
+          snapGrid={[20, 20]}
+          defaultViewport={{ x: 0, y: 0, zoom: 1 }}
         >
-          <Background />
+          <Background 
+            variant="dots" 
+            gap={20} 
+            size={1} 
+            color={showGrid ? 'currentColor' : 'transparent'} 
+            className="opacity-30"
+          />
           <Controls />
           <MiniMap 
             nodeColor={(node) => {

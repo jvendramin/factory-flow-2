@@ -25,4 +25,6 @@ export interface FlowEdge {
   animated?: boolean;
   style?: Record<string, any>;
   type?: string;
+  transitInProgress?: boolean;
+  transitProgress?: number; // 0 to 1
 }
