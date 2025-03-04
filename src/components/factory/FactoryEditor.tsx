@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import ReactFlow, {
   Background,
@@ -198,7 +197,7 @@ const FactoryEditor = ({
             const nodeCycleTime = nodeData.cycleTime || 0;
             const maxCapacity = nodeData.maxCapacity || 1;
             const adjustedCycleTime = maxCapacity > 1 ? nodeCycleTime / maxCapacity : nodeCycleTime;
-            const utilization = Math.min(100, Math.round((adjustedCycleTime / maxCycleTime) * 100));
+            const utilization = Math.min(100, Math.round((adjustedCycleTime / maxCapacity) * 100));
             
             return {
               ...node,
@@ -572,7 +571,7 @@ const FactoryEditor = ({
           defaultEdgeOptions={{
             type: 'default'
           }}
-          connectionLineType="straight" as ConnectionLineType
+          connectionLineType={ConnectionLineType.Straight}
           fitView
           connectionMode={ConnectionMode.Loose}
           attributionPosition="bottom-right"
@@ -582,7 +581,7 @@ const FactoryEditor = ({
           defaultViewport={{ x: 0, y: 0, zoom: 1 }}
         >
           <Background 
-            variant="dots" as BackgroundVariant
+            variant={BackgroundVariant.Dots}
             gap={20} 
             size={1} 
             color={showGrid ? 'currentColor' : 'transparent'} 
