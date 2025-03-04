@@ -8,7 +8,7 @@ import {
   useReactFlow,
 } from "reactflow";
 import { Badge } from "@/components/ui/badge";
-import { TruckIcon, XIcon } from "lucide-react";
+import { PencilIcon, TruckIcon, XIcon } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,6 +36,7 @@ const ConfigurableEdge = ({
 }: EdgeProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteButton, setShowDeleteButton] = useState(false);
+  const [showEditIcon, setShowEditIcon] = useState(false);
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
   const { setEdges, deleteElements } = useReactFlow();
   const transitTime = data?.transitTime || 0;
@@ -98,12 +99,14 @@ const ConfigurableEdge = ({
       setHoverTimeout(null);
     }
     setShowDeleteButton(true);
+    setShowEditIcon(true);
   };
 
   const handleMouseLeave = () => {
-    // Set a timeout before hiding the delete button
+    // Set a timeout before hiding the delete button and edit icon
     const timeout = setTimeout(() => {
       setShowDeleteButton(false);
+      setShowEditIcon(false);
     }, 500);
     setHoverTimeout(timeout);
   };
@@ -138,13 +141,21 @@ const ConfigurableEdge = ({
         >
           <Popover open={isEditing} onOpenChange={setIsEditing}>
             <PopoverTrigger asChild>
-              <Badge 
-                variant="secondary" 
-                className="cursor-pointer hover:bg-secondary/90 shadow-sm border border-border"
-                onClick={() => setIsEditing(true)}
-              >
-                {transitTime > 0 ? `${transitTime}s` : '0s'}
-              </Badge>
+              <div className="relative inline-block">
+                <Badge 
+                  variant="secondary" 
+                  className="cursor-pointer hover:bg-secondary/90 shadow-sm border border-border"
+                  onClick={() => setIsEditing(true)}
+                >
+                  {transitTime > 0 ? `${transitTime}s` : '0s'}
+                </Badge>
+                {showEditIcon && (
+                  <PencilIcon 
+                    size={14} 
+                    className="text-muted-foreground absolute -top-2 -right-2 bg-background rounded-full p-0.5 shadow-sm"
+                  />
+                )}
+              </div>
             </PopoverTrigger>
             <PopoverContent className="w-48 p-2 z-50" side="top" showArrow>
               <div className="space-y-2">
