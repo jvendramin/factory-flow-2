@@ -28,3 +28,8 @@ export interface FlowEdge {
   transitInProgress?: boolean;
   transitProgress?: number; // 0 to 1
 }
+
+export interface PathStep {
+  nodeId: string;
+  transitTime?: number;
+}

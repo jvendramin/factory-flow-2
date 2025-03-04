@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useRef, useEffect } from 'react';
 import ReactFlow, {
   Background,
@@ -17,12 +18,14 @@ import ReactFlow, {
   EdgeChange,
   ConnectionMode,
   EdgeTypes,
+  ConnectionLineType,
+  BackgroundVariant,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { toast } from '@/components/ui/use-toast';
 import EquipmentNode from './nodes/EquipmentNode';
 import ConfigurableEdge from './edges/ConfigurableEdge';
-import { Equipment } from '@/types/equipment';
+import { Equipment, PathStep } from '@/types/equipment';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ArrowRightCircle } from 'lucide-react';
 import LiveStatsPanel from './LiveStatsPanel';
@@ -61,6 +64,7 @@ const FactoryEditor = ({
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastTimestamp = useRef<number>(0);
+  const activeEdgeRef = useRef<string | null>(null);
   
   useEffect(() => {
     if (isSimulating && simulationMode === "play-by-play") {
@@ -568,7 +572,7 @@ const FactoryEditor = ({
           defaultEdgeOptions={{
             type: 'default'
           }}
-          connectionLineType="straight"
+          connectionLineType="straight" as ConnectionLineType
           fitView
           connectionMode={ConnectionMode.Loose}
           attributionPosition="bottom-right"
@@ -578,7 +582,7 @@ const FactoryEditor = ({
           defaultViewport={{ x: 0, y: 0, zoom: 1 }}
         >
           <Background 
-            variant="dots" 
+            variant="dots" as BackgroundVariant
             gap={20} 
             size={1} 
             color={showGrid ? 'currentColor' : 'transparent'} 
