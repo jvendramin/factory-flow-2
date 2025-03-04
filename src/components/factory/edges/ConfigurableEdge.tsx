@@ -96,20 +96,13 @@ const ConfigurableEdge = ({
 
   return (
     <>
-      <BaseEdge 
-        path={edgePath} 
-        markerEnd={markerEnd} 
-        style={style} 
-        onMouseEnter={() => setShowDeleteButton(true)}
-        onMouseLeave={() => setShowDeleteButton(false)}
-      />
+      <BaseEdge path={edgePath} markerEnd={markerEnd} style={style} />
       <EdgeLabelRenderer>
         <div
-          className="nodrag nopan"
+          className="nodrag nopan absolute"
           style={{
-            position: 'absolute',
             transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
-            zIndex: 1,
+            pointerEvents: 'all',
           }}
           onMouseEnter={() => setShowDeleteButton(true)}
           onMouseLeave={() => setShowDeleteButton(false)}
