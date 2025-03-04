@@ -395,6 +395,8 @@ const FactoryEditor = ({
   }, []);
   
   const onConnect = useCallback((params: Connection) => {
+    console.log("Connection params:", params);
+    
     setEdges((eds) => 
       addEdge({ 
         ...params, 

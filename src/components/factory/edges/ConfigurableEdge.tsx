@@ -9,7 +9,7 @@ import {
 } from "reactflow";
 import { Badge } from "@/components/ui/badge";
 import { TruckIcon, XIcon } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { 
@@ -36,8 +36,10 @@ const ConfigurableEdge = ({
 }: EdgeProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteButton, setShowDeleteButton] = useState(false);
+  const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
   const { setEdges, deleteElements } = useReactFlow();
   const transitTime = data?.transitTime || 0;
+  const edgeRef = useRef<HTMLDivElement>(null);
   
   // Use getBezierPath for direct connections between aligned nodes
   // Use getSmoothStepPath for elbow connectors when nodes are not aligned
@@ -89,6 +91,30 @@ const ConfigurableEdge = ({
     }
   };
 
+  const handleMouseEnter = () => {
+    // Clear any existing timeout
+    if (hoverTimeout) {
+      clearTimeout(hoverTimeout);
+      setHoverTimeout(null);
+    }
+    setShowDeleteButton(true);
+  };
+
+  const handleMouseLeave = () => {
+    // Set a timeout before hiding the delete button
+    const timeout = setTimeout(() => {
+      setShowDeleteButton(false);
+    }, 500);
+    setHoverTimeout(timeout);
+  };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimeout) clearTimeout(hoverTimeout);
+    };
+  }, [hoverTimeout]);
+
   const handleDeleteEdge = (e: React.MouseEvent) => {
     e.stopPropagation();
     deleteElements({ edges: [{ id }] });
@@ -99,13 +125,16 @@ const ConfigurableEdge = ({
       <BaseEdge path={edgePath} markerEnd={markerEnd} style={style} />
       <EdgeLabelRenderer>
         <div
+          ref={edgeRef}
           className="nodrag nopan absolute"
           style={{
             transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
             pointerEvents: 'all',
+            cursor: 'pointer',
+            padding: '8px',
           }}
-          onMouseEnter={() => setShowDeleteButton(true)}
-          onMouseLeave={() => setShowDeleteButton(false)}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
         >
           <Popover open={isEditing} onOpenChange={setIsEditing}>
             <PopoverTrigger asChild>
@@ -136,12 +165,13 @@ const ConfigurableEdge = ({
             </PopoverContent>
           </Popover>
 
-          {showDeleteButton && !isEditing && (
+          {showDeleteButton && (
             <Button 
               variant="destructive" 
               size="icon" 
               className="absolute -top-6 -right-6 h-5 w-5 rounded-full p-0"
               onClick={handleDeleteEdge}
+              onMouseEnter={handleMouseEnter}
             >
               <XIcon size={12} />
             </Button>

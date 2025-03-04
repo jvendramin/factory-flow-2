@@ -34,8 +34,16 @@ const EquipmentNode = ({ id, data, selected }: NodeProps<Equipment>) => {
     width: "8px",
     height: "8px",
     border: "1px solid #fff",
+    zIndex: 10, // Ensure handles are above other elements
   };
   
+  // Define special styles for top/bottom handles
+  const topBottomHandleStyle = {
+    ...handleStyle,
+    width: "8px",
+    height: "8px",
+  };
+
   return (
     <Card 
       className={`w-60 shadow-lg ${isActive ? 'ring-2 ring-primary' : ''} ${isBottleneck ? 'ring-2 ring-destructive' : ''} ${data.placeholder ? 'opacity-60' : ''}`}
@@ -104,42 +112,52 @@ const EquipmentNode = ({ id, data, selected }: NodeProps<Equipment>) => {
           )}
         </div>
       </CardContent>
-      {/* All four handles with improved styling and positioning */}
+      {/* Left and right handles */}
       <Handle
         type="target"
         position={Position.Left}
         style={handleStyle}
         isConnectable={!data.placeholder}
+        id="left-target"
       />
       <Handle
         type="source"
         position={Position.Right}
         style={handleStyle}
         isConnectable={!data.placeholder}
+        id="right-source"
       />
+      
+      {/* Top handles with unique IDs and improved styling */}
       <Handle
         type="target"
         position={Position.Top}
-        style={handleStyle}
+        style={topBottomHandleStyle}
         isConnectable={!data.placeholder}
+        id="top-target"
       />
       <Handle
         type="source"
         position={Position.Top}
-        style={handleStyle}
+        style={topBottomHandleStyle}
         isConnectable={!data.placeholder}
+        id="top-source"
       />
+      
+      {/* Bottom handles with unique IDs and improved styling */}
       <Handle
         type="target"
         position={Position.Bottom}
-        style={handleStyle}
+        style={topBottomHandleStyle}
         isConnectable={!data.placeholder}
+        id="bottom-target"
       />
       <Handle
         type="source"
         position={Position.Bottom}
-        style={handleStyle}
+        style={topBottomHandleStyle}
         isConnectable={!data.placeholder}
+        id="bottom-source"
       />
     </Card>
   );
