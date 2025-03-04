@@ -51,7 +51,7 @@ const EdgeConfigPanel = ({ edge }: EdgeConfigPanelProps) => {
           <span className="sr-only">Configure edge</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-60" align="center" alignOffset={0} side="top">
+      <PopoverContent className="w-60" align="center" alignOffset={0} side="top" sideOffset={5}>
         <div className="space-y-3">
           <h4 className="font-medium text-sm">Edge Configuration</h4>
           <div className="space-y-1">

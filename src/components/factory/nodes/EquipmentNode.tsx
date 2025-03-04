@@ -1,99 +1,114 @@
 
-import { Handle, Position, NodeProps } from 'reactflow';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { useCallback } from "react";
+import { Handle, Position, NodeProps, useReactFlow } from "reactflow";
+import { Equipment } from "@/types/equipment";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
-interface EquipmentNodeData {
-  name: string;
-  type: string;
-  cycleTime: number;
-  throughput: number;
-  dimensions: { width: number; height: number };
-  bottleneck?: boolean;
-  utilization?: number;
-  placeholder?: boolean;
-  active?: boolean;
-  progress?: number;
-}
-
-const EquipmentNode = ({ data, isConnectable }: NodeProps<EquipmentNodeData>) => {
-  const { name, type, cycleTime, throughput, bottleneck, utilization, placeholder, active, progress } = data;
+const EquipmentNode = ({ id, data, selected }: NodeProps<Equipment>) => {
+  const { setNodes, deleteElements } = useReactFlow();
+  const isActive = data.active;
+  const progress = data.progress ?? 0;
+  const isBottleneck = data.bottleneck;
+  const utilization = data.utilization;
+  
+  const handleDelete = useCallback((event: React.MouseEvent) => {
+    event.stopPropagation();
+    
+    deleteElements({
+      nodes: [{ id }],
+    });
+  }, [id, deleteElements]);
   
   return (
-    <div 
-      className={cn(
-        "border rounded-md p-3 shadow-sm bg-background min-w-40",
-        bottleneck ? "border-red-500" : "border-border",
-        placeholder ? "border-dashed border-2 bg-background/80" : "",
-        active ? "ring-2 ring-primary" : ""
-      )}
+    <Card 
+      className={`w-60 shadow-lg ${isActive ? 'ring-2 ring-primary' : ''} ${isBottleneck ? 'ring-2 ring-destructive' : ''} ${data.placeholder ? 'opacity-60' : ''}`}
     >
-      <div className="flex flex-col gap-1">
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="font-medium">{name}</div>
-            <Badge variant="outline" className="mt-1">
-              {type}
-            </Badge>
+      <CardHeader className="py-2 px-4 flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium leading-none truncate" title={data.name}>
+          {data.name}
+        </CardTitle>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-7 w-7" 
+                onClick={handleDelete}
+              >
+                <Trash2 className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Delete Equipment</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </CardHeader>
+      <CardContent className="px-4 py-2 space-y-2">
+        <div className="text-xs text-muted-foreground">
+          <div className="flex justify-between">
+            <span>Cycle Time:</span>
+            <span>{data.cycleTime}s</span>
           </div>
-          
-          {bottleneck && (
-            <Badge variant="destructive">Bottleneck</Badge>
-          )}
-        </div>
-        
-        {active && progress !== undefined && (
-          <div className="mt-2 w-full">
-            <div className="text-xs text-center mb-1">Processing unit...</div>
-            <div className="w-full bg-secondary rounded-full h-2">
-              <div 
-                className="bg-primary h-2 rounded-full transition-all duration-100"
-                style={{ width: `${progress * 100}%` }}
-              ></div>
+          <div className="flex justify-between">
+            <span>Throughput:</span>
+            <span>{data.throughput} units/hr</span>
+          </div>
+          {data.maxCapacity && data.maxCapacity > 1 && (
+            <div className="flex justify-between">
+              <span>Capacity:</span>
+              <span>{data.maxCapacity} units</span>
             </div>
-          </div>
-        )}
-        
-        <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-          <div className="flex flex-col">
-            <span>Cycle Time</span>
-            <span className="font-medium text-foreground">{cycleTime}s</span>
-          </div>
-          <div className="flex flex-col">
-            <span>Throughput</span>
-            <span className="font-medium text-foreground">{throughput}/hr</span>
-          </div>
+          )}
           {utilization !== undefined && (
-            <div className="flex flex-col col-span-2">
-              <span>Utilization</span>
-              <div className="w-full bg-secondary rounded-full h-2 mt-1">
-                <div 
-                  className={cn(
-                    "h-2 rounded-full",
-                    utilization > 90 ? "bg-red-500" : 
-                    utilization > 70 ? "bg-amber-500" : 
-                    "bg-green-500"
-                  )}
-                  style={{ width: `${utilization}%` }}
-                ></div>
+            <div className="mt-2">
+              <div className="flex justify-between mb-1">
+                <span>Utilization:</span>
+                <span className={isBottleneck ? 'text-destructive font-semibold' : ''}>
+                  {utilization}%
+                </span>
               </div>
-              <span className="font-medium text-foreground">{utilization}%</span>
+              <Progress 
+                value={utilization} 
+                max={100} 
+                className={isBottleneck ? 'bg-destructive/20' : ''}
+              />
+            </div>
+          )}
+          {isActive && progress > 0 && (
+            <div className="mt-2">
+              <div className="flex justify-between mb-1">
+                <span>Progress:</span>
+                <span>{Math.round(progress * 100)}%</span>
+              </div>
+              <Progress value={progress * 100} max={100} className="animate-pulse" />
             </div>
           )}
         </div>
-      </div>
-      
+      </CardContent>
       <Handle
         type="target"
         position={Position.Left}
-        isConnectable={isConnectable}
+        style={{ background: "#555" }}
+        isConnectable={!data.placeholder}
       />
       <Handle
         type="source"
         position={Position.Right}
-        isConnectable={isConnectable}
+        style={{ background: "#555" }}
+        isConnectable={!data.placeholder}
       />
-    </div>
+    </Card>
   );
 };
 

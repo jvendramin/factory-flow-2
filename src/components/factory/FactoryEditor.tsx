@@ -24,7 +24,7 @@ import 'reactflow/dist/style.css';
 import { toast } from '@/components/ui/use-toast';
 import EquipmentNode from './nodes/EquipmentNode';
 import ConfigurableEdge from './edges/ConfigurableEdge';
-import { Equipment, PathStep } from '@/types/equipment';
+import { Equipment, FlowEdge, PathStep } from '@/types/equipment';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ArrowRightCircle } from 'lucide-react';
 import LiveStatsPanel from './LiveStatsPanel';
@@ -80,7 +80,19 @@ const FactoryEditor = ({
           data: {
             ...node.data,
             active: false,
-            utilization: undefined
+            utilization: undefined,
+            progress: undefined
+          }
+        }))
+      );
+      
+      setEdges(eds => 
+        eds.map(e => ({
+          ...e,
+          data: {
+            ...e.data,
+            transitInProgress: false,
+            transitProgress: 0
           }
         }))
       );
@@ -92,7 +104,7 @@ const FactoryEditor = ({
         animationFrameRef.current = null;
       }
     };
-  }, [isSimulating, simulationMode, setNodes, onUnitPositionUpdate]);
+  }, [isSimulating, simulationMode, setNodes, onUnitPositionUpdate, setEdges]);
   
   const startPlayByPlaySimulation = useCallback(() => {
     const flowPath: string[] = [];
@@ -310,13 +322,22 @@ const FactoryEditor = ({
           data: {
             ...node.data,
             active: node.id === currentNodeId,
-            progress: node.id === currentNodeId ? progressWithinNode : undefined
+            progress: node.id === currentNodeId ? Math.min(progressWithinNode, 1) : undefined
           }
         }))
       );
       
-      setCurrentUnitPosition({ nodeId: currentNodeId, progress: progressWithinNode });
-      if (onUnitPositionUpdate) onUnitPositionUpdate({ nodeId: currentNodeId, progress: progressWithinNode });
+      setCurrentUnitPosition({ 
+        nodeId: currentNodeId, 
+        progress: Math.min(progressWithinNode, 1) 
+      });
+      
+      if (onUnitPositionUpdate) {
+        onUnitPositionUpdate({ 
+          nodeId: currentNodeId, 
+          progress: Math.min(progressWithinNode, 1) 
+        });
+      }
       
       if (progressWithinNode >= 1) {
         progressWithinNode = 0;
@@ -547,6 +568,17 @@ const FactoryEditor = ({
     setNodes(newNodes);
   }, [nodes, setNodes, snapToGrid]);
   
+  const onNodesDelete = useCallback((nodesToDelete: Node[]) => {
+    const nodeIds = nodesToDelete.map(n => n.id);
+    
+    setEdges(eds => eds.filter(e => !nodeIds.includes(e.source) && !nodeIds.includes(e.target)));
+    
+    toast({
+      title: "Equipment Removed",
+      description: "The selected equipment has been removed from the factory floor",
+    });
+  }, [setEdges]);
+
   return (
     <div className="w-full h-full flex flex-col">
       <div className="px-4 pt-2">
@@ -558,6 +590,7 @@ const FactoryEditor = ({
           edges={edges}
           onNodesChange={onNodeChanges}
           onEdgesChange={onEdgeChanges}
+          onNodesDelete={onNodesDelete}
           onConnect={onConnect}
           onConnectStart={onConnectStart}
           onConnectEnd={onConnectEnd}
@@ -571,7 +604,7 @@ const FactoryEditor = ({
           defaultEdgeOptions={{
             type: 'default'
           }}
-          connectionLineType={ConnectionLineType.Straight}
+          connectionLineType={ConnectionLineType.SmoothStep}
           fitView
           connectionMode={ConnectionMode.Loose}
           attributionPosition="bottom-right"
@@ -579,6 +612,7 @@ const FactoryEditor = ({
           snapToGrid={snapToGrid}
           snapGrid={[20, 20]}
           defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+          deleteKeyCode={['Backspace', 'Delete']}
         >
           <Background 
             variant={BackgroundVariant.Dots}

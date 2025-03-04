@@ -3,7 +3,8 @@ import {
   BaseEdge,
   EdgeLabelRenderer,
   EdgeProps,
-  getStraightPath,
+  getBezierPath,
+  getSmoothStepPath,
 } from "reactflow";
 import { TruckIcon } from "lucide-react";
 import EdgeConfigPanel from "../EdgeConfigPanel";
@@ -21,7 +22,8 @@ const ConfigurableEdge = ({
   data,
   label
 }: EdgeProps) => {
-  const [edgePath, labelX, labelY] = getStraightPath({
+  // Using getSmoothStepPath to create elbow connectors
+  const [edgePath, labelX, labelY] = getSmoothStepPath({
     sourceX,
     sourceY,
     targetX,
