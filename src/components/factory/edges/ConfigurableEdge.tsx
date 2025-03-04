@@ -5,16 +5,19 @@ import {
   EdgeProps,
   getBezierPath,
   getSmoothStepPath,
+  useReactFlow,
 } from "reactflow";
 import { Badge } from "@/components/ui/badge";
-import { TruckIcon } from "lucide-react";
+import { TruckIcon, XIcon } from "lucide-react";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { 
   Popover, 
   PopoverContent, 
   PopoverTrigger 
 } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
 
 const ConfigurableEdge = ({
   id,
@@ -32,6 +35,8 @@ const ConfigurableEdge = ({
   label
 }: EdgeProps) => {
   const [isEditing, setIsEditing] = useState(false);
+  const [showDeleteButton, setShowDeleteButton] = useState(false);
+  const { setEdges, deleteElements } = useReactFlow();
   const transitTime = data?.transitTime || 0;
   
   // Use getBezierPath for direct connections between aligned nodes
@@ -84,9 +89,20 @@ const ConfigurableEdge = ({
     }
   };
 
+  const handleDeleteEdge = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    deleteElements({ edges: [{ id }] });
+  };
+
   return (
     <>
-      <BaseEdge path={edgePath} markerEnd={markerEnd} style={style} />
+      <BaseEdge 
+        path={edgePath} 
+        markerEnd={markerEnd} 
+        style={style} 
+        onMouseEnter={() => setShowDeleteButton(true)}
+        onMouseLeave={() => setShowDeleteButton(false)}
+      />
       <EdgeLabelRenderer>
         <div
           className="nodrag nopan"
@@ -95,6 +111,8 @@ const ConfigurableEdge = ({
             transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
             zIndex: 1,
           }}
+          onMouseEnter={() => setShowDeleteButton(true)}
+          onMouseLeave={() => setShowDeleteButton(false)}
         >
           <Popover open={isEditing} onOpenChange={setIsEditing}>
             <PopoverTrigger asChild>
@@ -106,21 +124,35 @@ const ConfigurableEdge = ({
                 {transitTime > 0 ? `${transitTime}s` : '0s'}
               </Badge>
             </PopoverTrigger>
-            <PopoverContent className="w-48 p-2" side="top">
+            <PopoverContent className="w-48 p-2 z-50" side="top" showArrow>
               <div className="space-y-2">
-                <p className="text-xs font-medium">Transit Time (seconds)</p>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  value={transitTime}
-                  onChange={handleTransitTimeChange}
-                  onKeyDown={handleKeyDown}
-                  autoFocus
-                />
+                <div className="space-y-1">
+                  <Label htmlFor="transitTime">Transit Time (seconds)</Label>
+                  <Input
+                    id="transitTime"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={transitTime}
+                    onChange={handleTransitTimeChange}
+                    onKeyDown={handleKeyDown}
+                    autoFocus
+                  />
+                </div>
               </div>
             </PopoverContent>
           </Popover>
+
+          {showDeleteButton && !isEditing && (
+            <Button 
+              variant="destructive" 
+              size="icon" 
+              className="absolute -top-6 -right-6 h-5 w-5 rounded-full p-0"
+              onClick={handleDeleteEdge}
+            >
+              <XIcon size={12} />
+            </Button>
+          )}
 
           {data?.transitInProgress && (
             <div 

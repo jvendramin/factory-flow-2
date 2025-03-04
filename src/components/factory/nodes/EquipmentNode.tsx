@@ -28,6 +28,14 @@ const EquipmentNode = ({ id, data, selected }: NodeProps<Equipment>) => {
     });
   }, [id, deleteElements]);
   
+  // Define handle styles for a more consistent look
+  const handleStyle = {
+    background: "#555",
+    width: "8px",
+    height: "8px",
+    border: "1px solid #fff",
+  };
+  
   return (
     <Card 
       className={`w-60 shadow-lg ${isActive ? 'ring-2 ring-primary' : ''} ${isBottleneck ? 'ring-2 ring-destructive' : ''} ${data.placeholder ? 'opacity-60' : ''}`}
@@ -96,29 +104,41 @@ const EquipmentNode = ({ id, data, selected }: NodeProps<Equipment>) => {
           )}
         </div>
       </CardContent>
-      {/* Add handles on all four sides for more flexible connections */}
+      {/* All four handles with improved styling and positioning */}
       <Handle
         type="target"
         position={Position.Left}
-        style={{ background: "#555" }}
+        style={handleStyle}
         isConnectable={!data.placeholder}
       />
       <Handle
         type="source"
         position={Position.Right}
-        style={{ background: "#555" }}
+        style={handleStyle}
         isConnectable={!data.placeholder}
       />
       <Handle
         type="target"
         position={Position.Top}
-        style={{ background: "#555" }}
+        style={handleStyle}
+        isConnectable={!data.placeholder}
+      />
+      <Handle
+        type="source"
+        position={Position.Top}
+        style={handleStyle}
+        isConnectable={!data.placeholder}
+      />
+      <Handle
+        type="target"
+        position={Position.Bottom}
+        style={handleStyle}
         isConnectable={!data.placeholder}
       />
       <Handle
         type="source"
         position={Position.Bottom}
-        style={{ background: "#555" }}
+        style={handleStyle}
         isConnectable={!data.placeholder}
       />
     </Card>
