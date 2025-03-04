@@ -1,14 +1,5 @@
 
 import { useCallback } from "react";
-import { 
-  Popover, 
-  PopoverContent, 
-  PopoverTrigger 
-} from "@/components/ui/popover";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { Settings } from "lucide-react";
 import { Edge, useReactFlow } from "reactflow";
 import { FlowEdge } from "@/types/equipment";
 
@@ -16,62 +7,40 @@ interface EdgeConfigPanelProps {
   edge: Partial<Edge> & Pick<FlowEdge, 'id'>;
 }
 
+// This component is now a utility for edge updates
+// Actual UI is handled in ConfigurableEdge.tsx
 const EdgeConfigPanel = ({ edge }: EdgeConfigPanelProps) => {
   const { setEdges } = useReactFlow();
   
-  const updateTransitTime = useCallback((value: number) => {
-    setEdges(edges => 
-      edges.map(e => {
-        if (e.id === edge.id) {
-          return {
-            ...e,
-            data: {
-              ...e.data,
-              transitTime: value
-            },
-            label: value > 0 ? `${value}s` : undefined
-          };
-        }
-        return e;
-      })
-    );
+  // Set up event listener for edge updates from the badge component
+  useCallback(() => {
+    const handleEdgeUpdate = (event: CustomEvent) => {
+      const { id, data, label } = event.detail;
+      
+      if (id === edge.id) {
+        setEdges(edges => 
+          edges.map(e => {
+            if (e.id === id) {
+              return {
+                ...e,
+                data,
+                label
+              };
+            }
+            return e;
+          })
+        );
+      }
+    };
+    
+    document.addEventListener('edge:update', handleEdgeUpdate as EventListener);
+    
+    return () => {
+      document.removeEventListener('edge:update', handleEdgeUpdate as EventListener);
+    };
   }, [edge.id, setEdges]);
   
-  const transitTime = edge.data?.transitTime || 0;
-  
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="h-5 w-5 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-background rounded-full shadow-sm border border-border"
-        >
-          <Settings className="h-3 w-3" />
-          <span className="sr-only">Configure edge</span>
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-60" align="center" alignOffset={0} side="top" sideOffset={5}>
-        <div className="space-y-3">
-          <h4 className="font-medium text-sm">Edge Configuration</h4>
-          <div className="space-y-1">
-            <Label htmlFor="transitTime">Transit Time (seconds)</Label>
-            <Input
-              id="transitTime"
-              type="number"
-              min="0"
-              step="0.1"
-              value={transitTime}
-              onChange={(e) => updateTransitTime(parseFloat(e.target.value) || 0)}
-            />
-            <p className="text-xs text-muted-foreground">
-              Time it takes for a unit to move between equipment
-            </p>
-          </div>
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
+  return null;
 };
 
 export default EdgeConfigPanel;

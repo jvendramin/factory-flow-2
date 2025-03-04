@@ -96,6 +96,7 @@ const EquipmentNode = ({ id, data, selected }: NodeProps<Equipment>) => {
           )}
         </div>
       </CardContent>
+      {/* Add handles on all four sides for more flexible connections */}
       <Handle
         type="target"
         position={Position.Left}
@@ -105,6 +106,18 @@ const EquipmentNode = ({ id, data, selected }: NodeProps<Equipment>) => {
       <Handle
         type="source"
         position={Position.Right}
+        style={{ background: "#555" }}
+        isConnectable={!data.placeholder}
+      />
+      <Handle
+        type="target"
+        position={Position.Top}
+        style={{ background: "#555" }}
+        isConnectable={!data.placeholder}
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
         style={{ background: "#555" }}
         isConnectable={!data.placeholder}
       />

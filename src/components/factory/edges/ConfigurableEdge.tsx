@@ -6,8 +6,15 @@ import {
   getBezierPath,
   getSmoothStepPath,
 } from "reactflow";
+import { Badge } from "@/components/ui/badge";
 import { TruckIcon } from "lucide-react";
-import EdgeConfigPanel from "../EdgeConfigPanel";
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { 
+  Popover, 
+  PopoverContent, 
+  PopoverTrigger 
+} from "@/components/ui/popover";
 
 const ConfigurableEdge = ({
   id,
@@ -17,18 +24,65 @@ const ConfigurableEdge = ({
   sourceY,
   targetX,
   targetY,
+  sourcePosition,
+  targetPosition,
   style = {},
   markerEnd,
   data,
   label
 }: EdgeProps) => {
-  // Using getSmoothStepPath to create elbow connectors
-  const [edgePath, labelX, labelY] = getSmoothStepPath({
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
-  });
+  const [isEditing, setIsEditing] = useState(false);
+  const transitTime = data?.transitTime || 0;
+  
+  // Use getBezierPath for direct connections between aligned nodes
+  // Use getSmoothStepPath for elbow connectors when nodes are not aligned
+  const isHorizontallyAligned = Math.abs(sourceY - targetY) < 50;
+  const isVerticallyAligned = Math.abs(sourceX - targetX) < 50;
+  
+  let edgePath = '';
+  let labelX = 0;
+  let labelY = 0;
+  
+  if (isHorizontallyAligned || isVerticallyAligned) {
+    [edgePath, labelX, labelY] = getBezierPath({
+      sourceX,
+      sourceY,
+      sourcePosition,
+      targetX,
+      targetY,
+      targetPosition,
+    });
+  } else {
+    [edgePath, labelX, labelY] = getSmoothStepPath({
+      sourceX,
+      sourceY,
+      sourcePosition,
+      targetX,
+      targetY,
+      targetPosition,
+    });
+  }
+
+  const handleTransitTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseFloat(e.target.value) || 0;
+    const event = new CustomEvent('edge:update', {
+      detail: {
+        id,
+        data: {
+          ...data,
+          transitTime: value
+        },
+        label: value > 0 ? `${value}s` : undefined
+      }
+    });
+    document.dispatchEvent(event);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      setIsEditing(false);
+    }
+  };
 
   return (
     <>
@@ -42,14 +96,32 @@ const ConfigurableEdge = ({
             zIndex: 1,
           }}
         >
-          <EdgeConfigPanel edge={{ id, source, target, data, label }} />
-          {label && (
-            <div 
-              className="bg-background px-1 py-0.5 rounded text-xs border border-border absolute top-6 left-1/2 transform -translate-x-1/2"
-            >
-              {label}
-            </div>
-          )}
+          <Popover open={isEditing} onOpenChange={setIsEditing}>
+            <PopoverTrigger asChild>
+              <Badge 
+                variant="secondary" 
+                className="cursor-pointer hover:bg-secondary/90 shadow-sm border border-border"
+                onClick={() => setIsEditing(true)}
+              >
+                {transitTime > 0 ? `${transitTime}s` : '0s'}
+              </Badge>
+            </PopoverTrigger>
+            <PopoverContent className="w-48 p-2" side="top">
+              <div className="space-y-2">
+                <p className="text-xs font-medium">Transit Time (seconds)</p>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={transitTime}
+                  onChange={handleTransitTimeChange}
+                  onKeyDown={handleKeyDown}
+                  autoFocus
+                />
+              </div>
+            </PopoverContent>
+          </Popover>
+
           {data?.transitInProgress && (
             <div 
               className="absolute top-0 left-0"

@@ -106,6 +106,31 @@ const FactoryEditor = ({
     };
   }, [isSimulating, simulationMode, setNodes, onUnitPositionUpdate, setEdges]);
   
+  useEffect(() => {
+    const handleEdgeUpdate = (event: CustomEvent) => {
+      const { id, data, label } = event.detail;
+      
+      setEdges(edges => 
+        edges.map(e => {
+          if (e.id === id) {
+            return {
+              ...e,
+              data,
+              label
+            };
+          }
+          return e;
+        })
+      );
+    };
+    
+    document.addEventListener('edge:update', handleEdgeUpdate as EventListener);
+    
+    return () => {
+      document.removeEventListener('edge:update', handleEdgeUpdate as EventListener);
+    };
+  }, [setEdges]);
+  
   const startPlayByPlaySimulation = useCallback(() => {
     const flowPath: string[] = [];
     const edgeMap = new Map<string, { targetId: string, transitTime: number }[]>();
