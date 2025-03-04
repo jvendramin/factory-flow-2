@@ -14,6 +14,11 @@ export interface Equipment {
   setupTime?: number; // in minutes
   maxCapacity?: number; // concurrent units that can be processed
   energy?: number; // energy consumption
+  active?: boolean; // whether the equipment is currently active
+  progress?: number; // progress of current operation (0-1)
+  bottleneck?: boolean; // whether this equipment is a bottleneck
+  utilization?: number; // percentage of utilization
+  placeholder?: boolean; // whether this is a placeholder node
 }
 
 export interface FlowEdge {
