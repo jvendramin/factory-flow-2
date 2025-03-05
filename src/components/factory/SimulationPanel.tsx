@@ -170,298 +170,300 @@ const SimulationPanel = ({ isSimulating, setIsSimulating, simulationMode, setSim
       
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-4">
-          <TabsContent value="simulate" className="m-0 space-y-4">
-            <Card className="p-4">
-              <h3 className="text-sm font-medium mb-3">Simulation Mode</h3>
-              <ToggleGroup 
-                type="single" 
-                value={simulationMode}
-                onValueChange={handleSimulationModeChange}
-                className="justify-start mb-4"
-              >
-                <ToggleGroupItem value="instant" className="flex gap-1.5 items-center">
-                  <ZapIcon className="h-3.5 w-3.5" />
-                  <span>Instant</span>
-                </ToggleGroupItem>
-                <ToggleGroupItem value="play-by-play" className="flex gap-1.5 items-center">
-                  <TimerIcon className="h-3.5 w-3.5" />
-                  <span>Play-by-Play</span>
-                </ToggleGroupItem>
-              </ToggleGroup>
-              
-              <h3 className="text-sm font-medium mb-2">Simulation Controls</h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Speed:</span>
-                  <div className="flex-1 mx-4">
-                    <Slider
-                      value={[simulationSpeed]}
-                      min={0.1}
-                      max={2}
-                      step={0.1}
-                      onValueChange={(value) => setSimulationSpeed(value[0])}
-                      disabled={isSimulating}
-                    />
-                  </div>
-                  <span className="text-sm font-medium">{simulationSpeed}x</span>
-                </div>
+          <Tabs value={activeTab} defaultValue="simulate">
+            <TabsContent value="simulate" className="m-0 space-y-4">
+              <Card className="p-4">
+                <h3 className="text-sm font-medium mb-3">Simulation Mode</h3>
+                <ToggleGroup 
+                  type="single" 
+                  value={simulationMode}
+                  onValueChange={handleSimulationModeChange}
+                  className="justify-start mb-4"
+                >
+                  <ToggleGroupItem value="instant" className="flex gap-1.5 items-center">
+                    <ZapIcon className="h-3.5 w-3.5" />
+                    <span>Instant</span>
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="play-by-play" className="flex gap-1.5 items-center">
+                    <TimerIcon className="h-3.5 w-3.5" />
+                    <span>Play-by-Play</span>
+                  </ToggleGroupItem>
+                </ToggleGroup>
                 
-                {simulationMode === "instant" && (
+                <h3 className="text-sm font-medium mb-2">Simulation Controls</h3>
+                <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm">Units:</span>
+                    <span className="text-sm">Speed:</span>
                     <div className="flex-1 mx-4">
-                      <Input
-                        type="number"
-                        min={1}
-                        max={100000}
-                        value={simulationUnits}
-                        onChange={(e) => setSimulationUnits(Math.max(1, parseInt(e.target.value) || 1))}
+                      <Slider
+                        value={[simulationSpeed]}
+                        min={0.1}
+                        max={2}
+                        step={0.1}
+                        onValueChange={(value) => setSimulationSpeed(value[0])}
                         disabled={isSimulating}
-                        className="h-8"
                       />
                     </div>
+                    <span className="text-sm font-medium">{simulationSpeed}x</span>
                   </div>
-                )}
-                
-                {runningBatch && (
-                  <div className="w-full bg-secondary rounded-full h-2">
-                    <div 
-                      className="bg-primary h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${currentBatchProgress}%` }}
-                    ></div>
-                    <div className="text-xs text-center mt-1">{currentBatchProgress}% complete</div>
-                  </div>
-                )}
-                
-                <div className="flex space-x-2">
-                  {!isSimulating ? (
-                    <Button 
-                      onClick={handleStartSimulation} 
-                      className="flex-1"
-                    >
-                      <PlayIcon className="mr-2 h-4 w-4" />
-                      Start
-                    </Button>
-                  ) : (
-                    <>
-                      <Button 
-                        variant="outline" 
-                        onClick={() => setIsSimulating(false)} 
-                        className="flex-1"
-                      >
-                        <PauseIcon className="mr-2 h-4 w-4" />
-                        Pause
-                      </Button>
-                      <Button 
-                        variant="destructive" 
-                        onClick={handleStopSimulation} 
-                        className="flex-1"
-                      >
-                        <SquareIcon className="mr-2 h-4 w-4" />
-                        Stop
-                      </Button>
-                    </>
+                  
+                  {simulationMode === "instant" && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Units:</span>
+                      <div className="flex-1 mx-4">
+                        <Input
+                          type="number"
+                          min={1}
+                          max={100000}
+                          value={simulationUnits}
+                          onChange={(e) => setSimulationUnits(Math.max(1, parseInt(e.target.value) || 1))}
+                          disabled={isSimulating}
+                          className="h-8"
+                        />
+                      </div>
+                    </div>
                   )}
+                  
+                  {runningBatch && (
+                    <div className="w-full bg-secondary rounded-full h-2">
+                      <div 
+                        className="bg-primary h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${currentBatchProgress}%` }}
+                      ></div>
+                      <div className="text-xs text-center mt-1">{currentBatchProgress}% complete</div>
+                    </div>
+                  )}
+                  
+                  <div className="flex space-x-2">
+                    {!isSimulating ? (
+                      <Button 
+                        onClick={handleStartSimulation} 
+                        className="flex-1"
+                      >
+                        <PlayIcon className="mr-2 h-4 w-4" />
+                        Start
+                      </Button>
+                    ) : (
+                      <>
+                        <Button 
+                          variant="outline" 
+                          onClick={() => setIsSimulating(false)} 
+                          className="flex-1"
+                        >
+                          <PauseIcon className="mr-2 h-4 w-4" />
+                          Pause
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          onClick={handleStopSimulation} 
+                          className="flex-1"
+                        >
+                          <SquareIcon className="mr-2 h-4 w-4" />
+                          Stop
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </Card>
-            
-            {simulationResults && (
+              </Card>
+              
+              {simulationResults && (
+                <Card className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-medium">
+                      {simulationUnits > 1 ? `Results (${simulationUnits} units)` : 'Simulation Results'}
+                    </h3>
+                    <Button variant="ghost" size="icon">
+                      <LineChartIcon className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <div className="text-xs text-muted-foreground">Throughput</div>
+                      <div className="text-lg font-semibold">{simulationResults.throughput} units/hr</div>
+                    </div>
+                    
+                    <div>
+                      <div className="text-xs text-muted-foreground">Average Cycle Time</div>
+                      <div className="text-lg font-semibold">{simulationResults.cycleTime} seconds</div>
+                    </div>
+                    
+                    <div>
+                      <div className="text-xs text-muted-foreground">Overall Utilization</div>
+                      <div className="text-lg font-semibold">{simulationResults.utilization}%</div>
+                    </div>
+                    
+                    <Separator />
+                    
+                    <div>
+                      <div className="text-xs text-muted-foreground">Bottlenecks</div>
+                      {simulationResults.bottlenecks.map((bottleneck, index) => (
+                        <div key={index} className="text-sm font-medium text-destructive">
+                          {bottleneck}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </Card>
+              )}
+            </TabsContent>
+
+            <TabsContent value="tools" className="m-0 space-y-4">
               <Card className="p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-medium">
-                    {simulationUnits > 1 ? `Results (${simulationUnits} units)` : 'Simulation Results'}
-                  </h3>
-                  <Button variant="ghost" size="icon">
-                    <LineChartIcon className="h-4 w-4" />
-                  </Button>
-                </div>
+                <h3 className="text-sm font-medium mb-3">PDF Templates</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Generate a PDF template for a bank loan proposal with pre-filled information from your factory model.
+                </p>
                 
                 <div className="space-y-3">
-                  <div>
-                    <div className="text-xs text-muted-foreground">Throughput</div>
-                    <div className="text-lg font-semibold">{simulationResults.throughput} units/hr</div>
+                  <div className="flex items-center border rounded-md p-2 hover:bg-accent cursor-pointer" onClick={() => handleGeneratePDF("RBC")}>
+                    <BuildingIcon className="h-4 w-4 mr-2" />
+                    <div className="flex-1">
+                      <div className="text-sm font-medium">RBC Royal Bank</div>
+                      <div className="text-xs text-muted-foreground">Business loan proposal template</div>
+                    </div>
+                    <Button variant="ghost" size="sm">
+                      <FileIcon className="h-4 w-4" />
+                    </Button>
                   </div>
                   
-                  <div>
-                    <div className="text-xs text-muted-foreground">Average Cycle Time</div>
-                    <div className="text-lg font-semibold">{simulationResults.cycleTime} seconds</div>
+                  <div className="flex items-center border rounded-md p-2 hover:bg-accent cursor-pointer" onClick={() => handleGeneratePDF("TD")}>
+                    <BuildingIcon className="h-4 w-4 mr-2" />
+                    <div className="flex-1">
+                      <div className="text-sm font-medium">TD Bank</div>
+                      <div className="text-xs text-muted-foreground">Equipment financing template</div>
+                    </div>
+                    <Button variant="ghost" size="sm">
+                      <FileIcon className="h-4 w-4" />
+                    </Button>
                   </div>
                   
-                  <div>
-                    <div className="text-xs text-muted-foreground">Overall Utilization</div>
-                    <div className="text-lg font-semibold">{simulationResults.utilization}%</div>
+                  <div className="flex items-center border rounded-md p-2 hover:bg-accent cursor-pointer" onClick={() => handleGeneratePDF("Scotiabank")}>
+                    <BuildingIcon className="h-4 w-4 mr-2" />
+                    <div className="flex-1">
+                      <div className="text-sm font-medium">Scotiabank</div>
+                      <div className="text-xs text-muted-foreground">Manufacturing loan template</div>
+                    </div>
+                    <Button variant="ghost" size="sm">
+                      <FileIcon className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  <div className="flex items-center border rounded-md p-2 hover:bg-accent cursor-pointer" onClick={() => handleGeneratePDF("BDC")}>
+                    <BuildingIcon className="h-4 w-4 mr-2" />
+                    <div className="flex-1">
+                      <div className="text-sm font-medium">BDC</div>
+                      <div className="text-xs text-muted-foreground">Business development loan template</div>
+                    </div>
+                    <Button variant="ghost" size="sm">
+                      <FileIcon className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  <div className="flex items-center border rounded-md p-2 hover:bg-accent cursor-pointer" onClick={() => handleGeneratePDF("CIBC")}>
+                    <BuildingIcon className="h-4 w-4 mr-2" />
+                    <div className="flex-1">
+                      <div className="text-sm font-medium">CIBC</div>
+                      <div className="text-xs text-muted-foreground">Industrial equipment loan template</div>
+                    </div>
+                    <Button variant="ghost" size="sm">
+                      <FileIcon className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="mt-4">
+                  <Button variant="outline" className="w-full">
+                    <FileTextIcon className="mr-2 h-4 w-4" />
+                    Custom Template
+                  </Button>
+                </div>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="settings" className="m-0 space-y-4">
+              <Card className="p-4">
+                <h3 className="text-sm font-medium mb-3">Application Settings</h3>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-sm">Auto-save</Label>
+                      <p className="text-xs text-muted-foreground">Automatically save your factory design</p>
+                    </div>
+                    <Button 
+                      variant={autoSave ? "default" : "outline"} 
+                      size="sm" 
+                      onClick={() => setAutoSave(!autoSave)}
+                    >
+                      {autoSave ? "Enabled" : "Disabled"}
+                    </Button>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-sm">Notifications</Label>
+                      <p className="text-xs text-muted-foreground">Enable simulation completion notifications</p>
+                    </div>
+                    <Button 
+                      variant={notificationsEnabled ? "default" : "outline"} 
+                      size="sm" 
+                      onClick={() => setNotificationsEnabled(!notificationsEnabled)}
+                    >
+                      {notificationsEnabled ? "Enabled" : "Disabled"}
+                    </Button>
                   </div>
                   
                   <Separator />
                   
                   <div>
-                    <div className="text-xs text-muted-foreground">Bottlenecks</div>
-                    {simulationResults.bottlenecks.map((bottleneck, index) => (
-                      <div key={index} className="text-sm font-medium text-destructive">
-                        {bottleneck}
-                      </div>
-                    ))}
+                    <Label className="text-sm">Simulation Parameters</Label>
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      <Input 
+                        type="number" 
+                        placeholder="Default transit time (s)" 
+                        className="h-8" 
+                      />
+                      <Input 
+                        type="number" 
+                        placeholder="Processing time (s)" 
+                        className="h-8" 
+                      />
+                    </div>
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div>
+                    <Label className="text-sm">Export Options</Label>
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      <Button variant="outline" size="sm">
+                        Export as JSON
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        Export as CSV
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div>
+                    <Label className="text-sm">Reset Factory</Label>
+                    <div className="mt-2">
+                      <Button variant="destructive" size="sm" className="w-full">
+                        Reset All Data
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      This will clear all your factory design data and cannot be undone.
+                    </p>
                   </div>
                 </div>
               </Card>
-            )}
-          </TabsContent>
-
-          <TabsContent value="tools" className="m-0 space-y-4">
-            <Card className="p-4">
-              <h3 className="text-sm font-medium mb-3">PDF Templates</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Generate a PDF template for a bank loan proposal with pre-filled information from your factory model.
-              </p>
-              
-              <div className="space-y-3">
-                <div className="flex items-center border rounded-md p-2 hover:bg-accent cursor-pointer" onClick={() => handleGeneratePDF("RBC")}>
-                  <BuildingIcon className="h-4 w-4 mr-2" />
-                  <div className="flex-1">
-                    <div className="text-sm font-medium">RBC Royal Bank</div>
-                    <div className="text-xs text-muted-foreground">Business loan proposal template</div>
-                  </div>
-                  <Button variant="ghost" size="sm">
-                    <FileIcon className="h-4 w-4" />
-                  </Button>
-                </div>
-                
-                <div className="flex items-center border rounded-md p-2 hover:bg-accent cursor-pointer" onClick={() => handleGeneratePDF("TD")}>
-                  <BuildingIcon className="h-4 w-4 mr-2" />
-                  <div className="flex-1">
-                    <div className="text-sm font-medium">TD Bank</div>
-                    <div className="text-xs text-muted-foreground">Equipment financing template</div>
-                  </div>
-                  <Button variant="ghost" size="sm">
-                    <FileIcon className="h-4 w-4" />
-                  </Button>
-                </div>
-                
-                <div className="flex items-center border rounded-md p-2 hover:bg-accent cursor-pointer" onClick={() => handleGeneratePDF("Scotiabank")}>
-                  <BuildingIcon className="h-4 w-4 mr-2" />
-                  <div className="flex-1">
-                    <div className="text-sm font-medium">Scotiabank</div>
-                    <div className="text-xs text-muted-foreground">Manufacturing loan template</div>
-                  </div>
-                  <Button variant="ghost" size="sm">
-                    <FileIcon className="h-4 w-4" />
-                  </Button>
-                </div>
-                
-                <div className="flex items-center border rounded-md p-2 hover:bg-accent cursor-pointer" onClick={() => handleGeneratePDF("BDC")}>
-                  <BuildingIcon className="h-4 w-4 mr-2" />
-                  <div className="flex-1">
-                    <div className="text-sm font-medium">BDC</div>
-                    <div className="text-xs text-muted-foreground">Business development loan template</div>
-                  </div>
-                  <Button variant="ghost" size="sm">
-                    <FileIcon className="h-4 w-4" />
-                  </Button>
-                </div>
-                
-                <div className="flex items-center border rounded-md p-2 hover:bg-accent cursor-pointer" onClick={() => handleGeneratePDF("CIBC")}>
-                  <BuildingIcon className="h-4 w-4 mr-2" />
-                  <div className="flex-1">
-                    <div className="text-sm font-medium">CIBC</div>
-                    <div className="text-xs text-muted-foreground">Industrial equipment loan template</div>
-                  </div>
-                  <Button variant="ghost" size="sm">
-                    <FileIcon className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-              
-              <div className="mt-4">
-                <Button variant="outline" className="w-full">
-                  <FileTextIcon className="mr-2 h-4 w-4" />
-                  Custom Template
-                </Button>
-              </div>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="settings" className="m-0 space-y-4">
-            <Card className="p-4">
-              <h3 className="text-sm font-medium mb-3">Application Settings</h3>
-              
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-sm">Auto-save</Label>
-                    <p className="text-xs text-muted-foreground">Automatically save your factory design</p>
-                  </div>
-                  <Button 
-                    variant={autoSave ? "default" : "outline"} 
-                    size="sm" 
-                    onClick={() => setAutoSave(!autoSave)}
-                  >
-                    {autoSave ? "Enabled" : "Disabled"}
-                  </Button>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-sm">Notifications</Label>
-                    <p className="text-xs text-muted-foreground">Enable simulation completion notifications</p>
-                  </div>
-                  <Button 
-                    variant={notificationsEnabled ? "default" : "outline"} 
-                    size="sm" 
-                    onClick={() => setNotificationsEnabled(!notificationsEnabled)}
-                  >
-                    {notificationsEnabled ? "Enabled" : "Disabled"}
-                  </Button>
-                </div>
-                
-                <Separator />
-                
-                <div>
-                  <Label className="text-sm">Simulation Parameters</Label>
-                  <div className="grid grid-cols-2 gap-2 mt-2">
-                    <Input 
-                      type="number" 
-                      placeholder="Default transit time (s)" 
-                      className="h-8" 
-                    />
-                    <Input 
-                      type="number" 
-                      placeholder="Processing time (s)" 
-                      className="h-8" 
-                    />
-                  </div>
-                </div>
-                
-                <Separator />
-                
-                <div>
-                  <Label className="text-sm">Export Options</Label>
-                  <div className="grid grid-cols-2 gap-2 mt-2">
-                    <Button variant="outline" size="sm">
-                      Export as JSON
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      Export as CSV
-                    </Button>
-                  </div>
-                </div>
-                
-                <Separator />
-                
-                <div>
-                  <Label className="text-sm">Reset Factory</Label>
-                  <div className="mt-2">
-                    <Button variant="destructive" size="sm" className="w-full">
-                      Reset All Data
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    This will clear all your factory design data and cannot be undone.
-                  </p>
-                </div>
-              </div>
-            </Card>
-          </TabsContent>
+            </TabsContent>
+          </Tabs>
         </div>
       </ScrollArea>
     </div>
