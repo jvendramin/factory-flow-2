@@ -1,12 +1,14 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import FactoryEditor from "@/components/factory/FactoryEditor";
 import EquipmentPanel from "@/components/factory/EquipmentPanel";
 import SimulationPanel from "@/components/factory/SimulationPanel";
 import { Button } from "@/components/ui/button";
-import { MoonIcon, SunIcon } from "lucide-react";
+import { MoonIcon, SunIcon, Save, Share2 } from "lucide-react";
 import { useTheme } from "@/components/theme/theme-provider";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { toast } from "@/components/ui/use-toast";
 
 const Index = () => {
   const { theme, setTheme } = useTheme();
@@ -14,7 +16,42 @@ const Index = () => {
   const [simulationMode, setSimulationMode] = useState<"instant" | "play-by-play">("instant");
   const [simulationSpeed, setSimulationSpeed] = useState(1);
   const [currentUnitPosition, setCurrentUnitPosition] = useState<{ nodeId: string, progress: number } | null>(null);
-  const [activeTab, setActiveTab] = useState("editor");
+  const [factoryName, setFactoryName] = useState("My Factory");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Simulate auto-saving when factory name changes
+  useEffect(() => {
+    if (factoryName) {
+      setIsSaving(true);
+      const timer = setTimeout(() => {
+        setIsSaving(false);
+        // You could add actual save logic here
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [factoryName]);
+
+  const handleShareFactory = () => {
+    // In a real implementation, this would generate a unique URL
+    const shareableLink = `${window.location.origin}/share/${btoa(factoryName).replace(/=/g, '')}`;
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(shareableLink)
+      .then(() => {
+        toast({
+          title: "Link copied to clipboard",
+          description: "Share this link to let others view your factory design",
+        });
+      })
+      .catch(() => {
+        toast({
+          title: "Failed to copy link",
+          description: "Please try again",
+          variant: "destructive",
+        });
+      });
+  };
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">
@@ -35,55 +72,64 @@ const Index = () => {
       
       {/* Main Content - Factory Editor */}
       <div className="flex-1 flex flex-col">
-        <div className="border-b border-border p-2 flex justify-end">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
-            <TabsList className="gap-1 bg-transparent">
-              <TabsTrigger
-                value="editor"
-                className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none"
-              >
-                Editor
-              </TabsTrigger>
-              <TabsTrigger
-                value="analytics"
-                className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none"
-              >
-                Analytics
-              </TabsTrigger>
-              <TabsTrigger
-                value="settings"
-                className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none"
-              >
-                Settings
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+        <div className="border-b border-border p-2 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {isSaving ? (
+              <div className="flex items-center text-xs text-muted-foreground">
+                <Save size={14} className="mr-1 animate-pulse" />
+                Saving...
+              </div>
+            ) : (
+              <div className="flex items-center text-xs text-muted-foreground">
+                <Save size={14} className="mr-1" />
+                Saved
+              </div>
+            )}
+          </div>
+          
+          {isEditing ? (
+            <Input
+              value={factoryName}
+              onChange={(e) => setFactoryName(e.target.value)}
+              onBlur={() => setIsEditing(false)}
+              onKeyDown={(e) => e.key === 'Enter' && setIsEditing(false)}
+              className="max-w-[300px] text-center font-medium"
+              autoFocus
+            />
+          ) : (
+            <h2 
+              className="font-medium text-center cursor-pointer hover:text-primary transition-colors"
+              onClick={() => setIsEditing(true)}
+            >
+              {factoryName}
+            </h2>
+          )}
+          
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1 bg-transparent">
+                <Share2 size={16} />
+                Share
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80">
+              <div className="space-y-2">
+                <h3 className="font-medium">Share your factory design</h3>
+                <p className="text-sm text-muted-foreground">Generate a link that allows others to view your factory design in read-only mode.</p>
+                <Button onClick={handleShareFactory} className="w-full">
+                  Generate shareable link
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
         <div className="flex-1 relative">
-          <Tabs value={activeTab} className="h-full">
-            <TabsContent value="editor" className="h-full m-0">
-              <FactoryEditor 
-                isSimulating={isSimulating} 
-                simulationMode={simulationMode}
-                simulationSpeed={simulationSpeed}
-                onUnitPositionUpdate={setCurrentUnitPosition}
-              />
-            </TabsContent>
-            <TabsContent value="analytics" className="h-full m-0 p-4">
-              <div className="bg-muted/30 rounded-lg h-full flex items-center justify-center">
-                <p className="text-muted-foreground text-center">
-                  Analytics view is coming soon
-                </p>
-              </div>
-            </TabsContent>
-            <TabsContent value="settings" className="h-full m-0 p-4">
-              <div className="bg-muted/30 rounded-lg h-full flex items-center justify-center">
-                <p className="text-muted-foreground text-center">
-                  Settings view is coming soon
-                </p>
-              </div>
-            </TabsContent>
-          </Tabs>
+          <FactoryEditor 
+            isSimulating={isSimulating} 
+            simulationMode={simulationMode}
+            simulationSpeed={simulationSpeed}
+            onUnitPositionUpdate={setCurrentUnitPosition}
+          />
         </div>
       </div>
       
