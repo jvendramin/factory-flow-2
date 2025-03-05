@@ -8,7 +8,7 @@ import {
   useReactFlow,
 } from "reactflow";
 import { Badge } from "@/components/ui/badge";
-import { PencilIcon, TruckIcon, XIcon } from "lucide-react";
+import { PencilIcon, TrashIcon, TruckIcon } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,8 +35,7 @@ const ConfigurableEdge = ({
   label
 }: EdgeProps) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [showDeleteButton, setShowDeleteButton] = useState(false);
-  const [showEditIcon, setShowEditIcon] = useState(false);
+  const [showButtons, setShowButtons] = useState(false);
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
   const { setEdges, deleteElements } = useReactFlow();
   const transitTime = data?.transitTime || 0;
@@ -98,15 +97,13 @@ const ConfigurableEdge = ({
       clearTimeout(hoverTimeout);
       setHoverTimeout(null);
     }
-    setShowDeleteButton(true);
-    setShowEditIcon(true);
+    setShowButtons(true);
   };
 
   const handleMouseLeave = () => {
-    // Set a timeout before hiding the delete button and edit icon
+    // Set a timeout before hiding the buttons
     const timeout = setTimeout(() => {
-      setShowDeleteButton(false);
-      setShowEditIcon(false);
+      setShowButtons(false);
     }, 500);
     setHoverTimeout(timeout);
   };
@@ -149,15 +146,9 @@ const ConfigurableEdge = ({
                 >
                   {transitTime > 0 ? `${transitTime}s` : '0s'}
                 </Badge>
-                {showEditIcon && (
-                  <PencilIcon 
-                    size={14} 
-                    className="text-muted-foreground absolute -top-2 -right-2 bg-background rounded-full p-0.5 shadow-sm"
-                  />
-                )}
               </div>
             </PopoverTrigger>
-            <PopoverContent className="w-48 p-2 z-50" side="top" showArrow>
+            <PopoverContent className="w-48 p-2 z-50" side="top">
               <div className="space-y-2">
                 <div className="space-y-1">
                   <Label htmlFor="transitTime">Transit Time (seconds)</Label>
@@ -176,16 +167,30 @@ const ConfigurableEdge = ({
             </PopoverContent>
           </Popover>
 
-          {showDeleteButton && (
-            <Button 
-              variant="destructive" 
-              size="icon" 
-              className="absolute -top-6 -right-6 h-5 w-5 rounded-full p-0"
-              onClick={handleDeleteEdge}
+          {showButtons && (
+            <div 
+              className="absolute -top-8 -right-1 inline-flex -space-x-px rounded-lg shadow-sm shadow-black/5 rtl:space-x-reverse"
               onMouseEnter={handleMouseEnter}
             >
-              <XIcon size={12} />
-            </Button>
+              <Button
+                className="rounded-none shadow-none first:rounded-s-lg last:rounded-e-lg focus-visible:z-10 h-6 w-6"
+                variant="outline"
+                size="icon"
+                aria-label="Edit"
+                onClick={() => setIsEditing(true)}
+              >
+                <PencilIcon size={12} strokeWidth={2} aria-hidden="true" />
+              </Button>
+              <Button
+                className="rounded-none shadow-none first:rounded-s-lg last:rounded-e-lg focus-visible:z-10 h-6 w-6"
+                variant="outline"
+                size="icon"
+                aria-label="Delete"
+                onClick={handleDeleteEdge}
+              >
+                <TrashIcon size={12} strokeWidth={2} aria-hidden="true" />
+              </Button>
+            </div>
           )}
 
           {data?.transitInProgress && (
