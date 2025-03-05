@@ -1,9 +1,10 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
-import { PlayIcon, PauseIcon, SquareIcon, SettingsIcon, LineChartIcon, ZapIcon, TimerIcon, RocketIcon, WrenchIcon, FilePdfIcon, BankIcon, FileTextIcon, SlidersIcon } from "lucide-react";
+import { PlayIcon, PauseIcon, SquareIcon, SettingsIcon, LineChartIcon, ZapIcon, TimerIcon, RocketIcon, WrenchIcon, FileIcon, BuildingIcon, FileTextIcon, SlidersIcon } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/use-toast";
@@ -316,57 +317,57 @@ const SimulationPanel = ({ isSimulating, setIsSimulating, simulationMode, setSim
               
               <div className="space-y-3">
                 <div className="flex items-center border rounded-md p-2 hover:bg-accent cursor-pointer" onClick={() => handleGeneratePDF("RBC")}>
-                  <BankIcon className="h-4 w-4 mr-2" />
+                  <BuildingIcon className="h-4 w-4 mr-2" />
                   <div className="flex-1">
                     <div className="text-sm font-medium">RBC Royal Bank</div>
                     <div className="text-xs text-muted-foreground">Business loan proposal template</div>
                   </div>
                   <Button variant="ghost" size="sm">
-                    <FilePdfIcon className="h-4 w-4" />
+                    <FileIcon className="h-4 w-4" />
                   </Button>
                 </div>
                 
                 <div className="flex items-center border rounded-md p-2 hover:bg-accent cursor-pointer" onClick={() => handleGeneratePDF("TD")}>
-                  <BankIcon className="h-4 w-4 mr-2" />
+                  <BuildingIcon className="h-4 w-4 mr-2" />
                   <div className="flex-1">
                     <div className="text-sm font-medium">TD Bank</div>
                     <div className="text-xs text-muted-foreground">Equipment financing template</div>
                   </div>
                   <Button variant="ghost" size="sm">
-                    <FilePdfIcon className="h-4 w-4" />
+                    <FileIcon className="h-4 w-4" />
                   </Button>
                 </div>
                 
                 <div className="flex items-center border rounded-md p-2 hover:bg-accent cursor-pointer" onClick={() => handleGeneratePDF("Scotiabank")}>
-                  <BankIcon className="h-4 w-4 mr-2" />
+                  <BuildingIcon className="h-4 w-4 mr-2" />
                   <div className="flex-1">
                     <div className="text-sm font-medium">Scotiabank</div>
                     <div className="text-xs text-muted-foreground">Manufacturing loan template</div>
                   </div>
                   <Button variant="ghost" size="sm">
-                    <FilePdfIcon className="h-4 w-4" />
+                    <FileIcon className="h-4 w-4" />
                   </Button>
                 </div>
                 
                 <div className="flex items-center border rounded-md p-2 hover:bg-accent cursor-pointer" onClick={() => handleGeneratePDF("BDC")}>
-                  <BankIcon className="h-4 w-4 mr-2" />
+                  <BuildingIcon className="h-4 w-4 mr-2" />
                   <div className="flex-1">
                     <div className="text-sm font-medium">BDC</div>
                     <div className="text-xs text-muted-foreground">Business development loan template</div>
                   </div>
                   <Button variant="ghost" size="sm">
-                    <FilePdfIcon className="h-4 w-4" />
+                    <FileIcon className="h-4 w-4" />
                   </Button>
                 </div>
                 
                 <div className="flex items-center border rounded-md p-2 hover:bg-accent cursor-pointer" onClick={() => handleGeneratePDF("CIBC")}>
-                  <BankIcon className="h-4 w-4 mr-2" />
+                  <BuildingIcon className="h-4 w-4 mr-2" />
                   <div className="flex-1">
                     <div className="text-sm font-medium">CIBC</div>
                     <div className="text-xs text-muted-foreground">Industrial equipment loan template</div>
                   </div>
                   <Button variant="ghost" size="sm">
-                    <FilePdfIcon className="h-4 w-4" />
+                    <FileIcon className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
