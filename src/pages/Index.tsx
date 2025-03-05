@@ -60,28 +60,30 @@ const Index = () => {
           </Tabs>
         </div>
         <div className="flex-1 relative">
-          <TabsContent value="editor" className="h-full m-0">
-            <FactoryEditor 
-              isSimulating={isSimulating} 
-              simulationMode={simulationMode}
-              simulationSpeed={simulationSpeed}
-              onUnitPositionUpdate={setCurrentUnitPosition}
-            />
-          </TabsContent>
-          <TabsContent value="analytics" className="h-full m-0 p-4">
-            <div className="bg-muted/30 rounded-lg h-full flex items-center justify-center">
-              <p className="text-muted-foreground text-center">
-                Analytics view is coming soon
-              </p>
-            </div>
-          </TabsContent>
-          <TabsContent value="settings" className="h-full m-0 p-4">
-            <div className="bg-muted/30 rounded-lg h-full flex items-center justify-center">
-              <p className="text-muted-foreground text-center">
-                Settings view is coming soon
-              </p>
-            </div>
-          </TabsContent>
+          <Tabs value={activeTab} className="h-full">
+            <TabsContent value="editor" className="h-full m-0">
+              <FactoryEditor 
+                isSimulating={isSimulating} 
+                simulationMode={simulationMode}
+                simulationSpeed={simulationSpeed}
+                onUnitPositionUpdate={setCurrentUnitPosition}
+              />
+            </TabsContent>
+            <TabsContent value="analytics" className="h-full m-0 p-4">
+              <div className="bg-muted/30 rounded-lg h-full flex items-center justify-center">
+                <p className="text-muted-foreground text-center">
+                  Analytics view is coming soon
+                </p>
+              </div>
+            </TabsContent>
+            <TabsContent value="settings" className="h-full m-0 p-4">
+              <div className="bg-muted/30 rounded-lg h-full flex items-center justify-center">
+                <p className="text-muted-foreground text-center">
+                  Settings view is coming soon
+                </p>
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
       
