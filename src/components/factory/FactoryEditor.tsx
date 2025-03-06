@@ -32,10 +32,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ArrowRightCircle } from 'lucide-react';
 import LiveStatsPanel from './LiveStatsPanel';
 
-// Change MIN_DISTANCE to match 3 grid dots (20px per dot)
 const MIN_DISTANCE = 60;
-
-// Group/subflow creation threshold
 const GROUP_THRESHOLD = 30;
 
 const nodeTypes: NodeTypes = {
@@ -88,7 +85,7 @@ const FactoryEditorContent = ({
   const lastTimestamp = useRef<number>(0);
   const activeEdgeRef = useRef<string | null>(null);
   const store = useStoreApi();
-  const { getNodes, getEdges, project } = useReactFlow();
+  const { getNodes, getEdges, project, screenToFlowPosition } = useReactFlow();
   
   useEffect(() => {
     if (isSimulating && simulationMode === "play-by-play") {
@@ -168,7 +165,6 @@ const FactoryEditorContent = ({
       edgeMap.set(edge.source, sources);
     });
     
-    // Find connected nodes by traversing the edge map from any source node
     const connectedNodes = new Set<string>();
     const findConnectedNodes = (nodeId: string) => {
       if (connectedNodes.has(nodeId)) return;
@@ -180,17 +176,14 @@ const FactoryEditorContent = ({
       });
     };
     
-    // Find nodes that have incoming connections (targets)
     const allTargets = new Set(edges.map(e => e.target));
     
-    // Filter nodes that have no incoming connections (sources)
     const startNodeIds = nodes.filter(n => 
       !allTargets.has(n.id) && 
       edgeMap.has(n.id) && 
       edgeMap.get(n.id)!.length > 0
     ).map(n => n.id);
     
-    // If no clear starting points, don't run the simulation
     if (startNodeIds.length === 0) {
       toast({
         title: "Simulation Error",
@@ -200,7 +193,6 @@ const FactoryEditorContent = ({
       return;
     }
     
-    // Identify all connected nodes in the flow
     startNodeIds.forEach(nodeId => {
       findConnectedNodes(nodeId);
     });
@@ -247,7 +239,6 @@ const FactoryEditorContent = ({
         let bottleneckId = startNodeIds[0];
         let maxCycleTime = 0;
         
-        // Only calculate utilization for connected nodes
         nodes.forEach(node => {
           if (!connectedNodes.has(node.id)) return;
           
@@ -269,7 +260,6 @@ const FactoryEditorContent = ({
         
         setNodes(nds => 
           nds.map(node => {
-            // Only connected nodes participate in simulation
             if (!connectedNodes.has(node.id)) {
               return {
                 ...node,
@@ -345,7 +335,6 @@ const FactoryEditorContent = ({
             const nextNodes = edgeMap.get(path.nodeId) || [];
             
             if (nextNodes.length === 0) {
-              // End of path
             } else {
               nextNodes.forEach(({ targetId, transitTime }) => {
                 nextActivePaths.push({
@@ -501,20 +490,17 @@ const FactoryEditorContent = ({
       return null;
     }
 
-    // Find node dimensions (approximate)
-    const nodeWidth = 240; // Equipment node width
-    const nodeHeight = 180; // Equipment node height
+    const nodeWidth = 240; 
+    const nodeHeight = 180;
     
     const currentX = currentNode.position.x;
     const currentY = currentNode.position.y;
     
-    // Check if current node overlaps with any other node
     for (const node of flowNodes) {
       if (node.id !== draggingNode.id && !node.parentId && node.type !== 'group') {
         const targetX = node.position.x;
         const targetY = node.position.y;
         
-        // Check if centers are close enough to indicate overlap
         const distance = Math.sqrt(
           Math.pow(targetX - currentX, 2) + 
           Math.pow(targetY - currentY, 2)
@@ -532,7 +518,6 @@ const FactoryEditorContent = ({
   const onNodeDrag: NodeDragHandler = useCallback((_, node) => {
     if (isSimulating) return;
     
-    // Handle proximity connections
     const closeEdge = getClosestNode(node);
     
     setEdges((es) => {
@@ -553,11 +538,9 @@ const FactoryEditorContent = ({
       return nextEdges;
     });
     
-    // Handle potential grouping
     const overlappingNodeId = isNodeOverlapping(node);
     setPotentialGroupTarget(overlappingNodeId);
     
-    // Highlight the node that would be grouped
     if (overlappingNodeId) {
       setNodes(nodes => 
         nodes.map(n => {
@@ -574,7 +557,6 @@ const FactoryEditorContent = ({
         })
       );
     } else {
-      // Remove highlighting if no longer overlapping
       setNodes(nodes => 
         nodes.map(n => ({
           ...n,
@@ -585,16 +567,13 @@ const FactoryEditorContent = ({
   }, [getClosestNode, setEdges, isSimulating, isNodeOverlapping, setNodes]);
   
   const createGroup = useCallback((nodeId: string, targetId: string) => {
-    // Find the positions of both nodes
     const nodeA = nodes.find(n => n.id === nodeId);
     const nodeB = nodes.find(n => n.id === targetId);
     
     if (!nodeA || !nodeB) return;
     
-    // Create a group node
     const groupId = `group-${Date.now()}`;
     
-    // Calculate group position and dimensions
     const left = Math.min(nodeA.position.x, nodeB.position.x) - 40;
     const top = Math.min(nodeA.position.y, nodeB.position.y) - 40;
     const right = Math.max(nodeA.position.x + 240, nodeB.position.x + 240) + 40;
@@ -603,7 +582,6 @@ const FactoryEditorContent = ({
     const width = right - left;
     const height = bottom - top;
     
-    // Create the group node
     const groupNode: Node = {
       id: groupId,
       type: 'group',
@@ -612,7 +590,6 @@ const FactoryEditorContent = ({
       data: { label: 'Equipment Group' },
     };
     
-    // Update the child nodes to be part of the group
     const updatedNodes = nodes.map(n => {
       if (n.id === nodeId || n.id === targetId) {
         return {
@@ -629,7 +606,6 @@ const FactoryEditorContent = ({
       return n;
     });
     
-    // Add the group node to the nodes array
     setNodes([...updatedNodes, groupNode]);
     
     toast({
@@ -641,7 +617,6 @@ const FactoryEditorContent = ({
   const onNodeDragStop: NodeDragHandler = useCallback((_, node) => {
     if (isSimulating) return;
     
-    // Handle proximity connection
     const closeEdge = getClosestNode(node);
     
     setEdges((es) => {
@@ -665,13 +640,11 @@ const FactoryEditorContent = ({
       return nextEdges;
     });
     
-    // Handle group creation if nodes are overlapping
     if (potentialGroupTarget) {
       createGroup(node.id, potentialGroupTarget);
       setPotentialGroupTarget(null);
     }
     
-    // Remove any highlighting
     setNodes(nodes => 
       nodes.map(n => ({
         ...n,
@@ -696,7 +669,7 @@ const FactoryEditorContent = ({
       }
 
       const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
-      const position = reactFlowInstance.project({
+      const position = reactFlowInstance.screenToFlowPosition({
         x: event.clientX - reactFlowBounds.left,
         y: event.clientY - reactFlowBounds.top,
       });
@@ -735,7 +708,7 @@ const FactoryEditorContent = ({
       const equipmentData = JSON.parse(jsonData);
       
       const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
-      const position = reactFlowInstance.project({
+      const position = reactFlowInstance.screenToFlowPosition({
         x: event.clientX - reactFlowBounds.left,
         y: event.clientY - reactFlowBounds.top,
       });
