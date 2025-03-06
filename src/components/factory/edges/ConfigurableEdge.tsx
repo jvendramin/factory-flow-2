@@ -132,13 +132,16 @@ const ConfigurableEdge = ({
     ...((className === 'temp') ? { strokeDasharray: '5,5' } : {})
   };
 
+  // Add custom CSS class for the edge path if it's a temporary edge
+  const edgePathClasses = className === 'temp' ? 'temp-edge-path' : '';
+
   return (
     <>
       <BaseEdge 
         path={edgePath} 
         markerEnd={markerEnd} 
         style={combinedStyle} 
-        className={className} 
+        className={edgePathClasses}
       />
       
       {/* Only show controls if this is not a temporary edge */}

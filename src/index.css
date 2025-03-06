@@ -99,6 +99,14 @@
   stroke-width: 1.5;
 }
 
+/* Use this class for temporary edge paths */
+.temp-edge-path {
+  stroke-dasharray: 5, 5;
+  animation: dashdraw 0.5s linear infinite;
+  stroke: hsl(var(--primary));
+  stroke-width: 1.5;
+}
+
 /* Node group styling */
 .react-flow__node.react-flow__node-group {
   background-color: rgba(240, 240, 250, 0.1);
