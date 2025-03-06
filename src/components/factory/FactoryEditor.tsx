@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useRef, useEffect } from 'react';
 import ReactFlow, {
   Background,
@@ -19,6 +20,7 @@ import ReactFlow, {
   EdgeTypes,
   ConnectionLineType,
   BackgroundVariant,
+  useStoreApi,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { toast } from '@/components/ui/use-toast';
@@ -28,6 +30,8 @@ import { Equipment, FlowEdge, PathStep } from '@/types/equipment';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ArrowRightCircle } from 'lucide-react';
 import LiveStatsPanel from './LiveStatsPanel';
+
+const MIN_DISTANCE = 150;
 
 const nodeTypes: NodeTypes = {
   equipment: EquipmentNode,
@@ -64,6 +68,8 @@ const FactoryEditor = ({
   const animationFrameRef = useRef<number | null>(null);
   const lastTimestamp = useRef<number>(0);
   const activeEdgeRef = useRef<string | null>(null);
+  const store = useStoreApi();
+  const { getInternalNode } = useReactFlow();
   
   useEffect(() => {
     if (isSimulating && simulationMode === "play-by-play") {
@@ -132,9 +138,9 @@ const FactoryEditor = ({
   }, [setEdges]);
   
   const startPlayByPlaySimulation = useCallback(() => {
-    const flowPath: string[] = [];
     const edgeMap = new Map<string, { targetId: string, transitTime: number }[]>();
     
+    // Build a map of source nodes to their target nodes for concurrent processing
     edges.forEach(edge => {
       const sources = edgeMap.get(edge.source) || [];
       sources.push({ 
@@ -156,34 +162,23 @@ const FactoryEditor = ({
       return;
     }
     
-    const fullPath: PathStep[] = [{ nodeId: startNodeId }];
+    // Initialize our active paths array to handle concurrent paths
+    const activePaths: {
+      nodeId: string,
+      progress: number,
+      inTransit: boolean,
+      transitTo: string,
+      transitTime: number,
+      transitProgress: number
+    }[] = [{ 
+      nodeId: startNodeId, 
+      progress: 0, 
+      inTransit: false,
+      transitTo: '', 
+      transitTime: 0,
+      transitProgress: 0
+    }];
     
-    let currentNodeId = startNodeId;
-    while (edgeMap.has(currentNodeId)) {
-      const nextNodes = edgeMap.get(currentNodeId) || [];
-      if (nextNodes.length === 0) break;
-      
-      const { targetId, transitTime } = nextNodes[0];
-      fullPath.push({ 
-        nodeId: targetId,
-        transitTime
-      });
-      currentNodeId = targetId;
-    }
-    
-    if (fullPath.length < 2) {
-      toast({
-        title: "Simulation Error",
-        description: "Your process needs at least two connected equipment to run a simulation.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    let currentPathIndex = 0;
-    let progressWithinNode = 0;
-    let inTransit = false;
-    let transitProgress = 0;
     const nodeDataMap = new Map(nodes.map(n => [n.id, n.data]));
     
     lastTimestamp.current = 0;
@@ -198,50 +193,48 @@ const FactoryEditor = ({
       const delta = (timestamp - lastTimestamp.current) / 1000;
       lastTimestamp.current = timestamp;
       
-      if (currentPathIndex >= fullPath.length) {
+      if (activePaths.length === 0) {
+        // All paths have completed
         toast({
           title: "Simulation Complete",
-          description: "Unit has completed the process flow."
+          description: "All units have completed the process flow."
         });
         
-        const avgCycleTime = fullPath.reduce((total, step) => {
-          const nodeData = nodeDataMap.get(step.nodeId);
-          return total + (nodeData?.cycleTime || 0) + (step.transitTime || 0);
-        }, 0);
+        // Calculate statistics for all nodes
+        const nodeUtilizations = new Map<string, number>();
+        const nodeCycles = new Map<string, number>();
         
-        const throughput = Math.floor(3600 / avgCycleTime);
-        
-        let bottleneckId = fullPath[0].nodeId;
+        // Find the bottleneck
+        let bottleneckId = startNodeId;
         let maxCycleTime = 0;
         
-        fullPath.forEach(step => {
-          const nodeData = nodeDataMap.get(step.nodeId);
-          const cycleTime = nodeData?.cycleTime || 0;
-          const maxCapacity = nodeData?.maxCapacity || 1;
+        nodes.forEach(node => {
+          const nodeData = nodeDataMap.get(node.id);
+          if (!nodeData) return;
+          
+          const cycleTime = nodeData.cycleTime || 0;
+          const maxCapacity = nodeData.maxCapacity || 1;
           const adjustedCycleTime = maxCapacity > 1 ? cycleTime / maxCapacity : cycleTime;
           
           if (adjustedCycleTime > maxCycleTime) {
             maxCycleTime = adjustedCycleTime;
-            bottleneckId = step.nodeId;
+            bottleneckId = node.id;
           }
+          
+          // Calculate utilization based on cycle time and capacity
+          const utilization = Math.min(100, Math.round((adjustedCycleTime / maxCycleTime) * 100));
+          nodeUtilizations.set(node.id, utilization);
         });
         
+        // Update nodes with utilization data
         setNodes(nds => 
           nds.map(node => {
-            const nodeData = nodeDataMap.get(node.id);
-            if (!nodeData) return node;
-            
-            const nodeCycleTime = nodeData.cycleTime || 0;
-            const maxCapacity = nodeData.maxCapacity || 1;
-            const adjustedCycleTime = maxCapacity > 1 ? nodeCycleTime / maxCapacity : nodeCycleTime;
-            const utilization = Math.min(100, Math.round((adjustedCycleTime / maxCapacity) * 100));
-            
             return {
               ...node,
               data: {
                 ...node.data,
                 active: false,
-                utilization: utilization,
+                utilization: nodeUtilizations.get(node.id) || 0,
                 bottleneck: node.id === bottleneckId
               }
             };
@@ -251,144 +244,134 @@ const FactoryEditor = ({
         return;
       }
       
-      if (inTransit) {
-        const currentStep = fullPath[currentPathIndex];
-        const prevStep = fullPath[currentPathIndex - 1];
-        
-        if (!prevStep) {
-          inTransit = false;
-        } else {
-          const transitTime = currentStep.transitTime || 0;
+      // Process all active paths
+      const nextActivePaths: typeof activePaths = [];
+      const activeNodeIds = new Set<string>();
+      const transitEdges = new Map<string, number>();
+      
+      // Update all active paths
+      activePaths.forEach(path => {
+        if (path.inTransit) {
+          // Handle transit between nodes
+          path.transitProgress += delta * simulationSpeed / path.transitTime;
           
-          if (transitTime <= 0) {
-            inTransit = false;
-            activeEdgeRef.current = null;
-            
-            setEdges(eds => 
-              eds.map(e => ({
-                ...e,
-                data: {
-                  ...e.data,
-                  transitInProgress: false,
-                  transitProgress: 0
-                }
-              }))
-            );
-          } else {
-            const transitStep = delta * simulationSpeed / transitTime;
-            transitProgress += transitStep;
-            
+          if (path.transitTime > 0) {
+            // Find the edge for this transit
             const edgeId = edges.find(
-              e => e.source === prevStep.nodeId && e.target === currentStep.nodeId
+              e => e.source === path.nodeId && e.target === path.transitTo
             )?.id;
             
             if (edgeId) {
-              activeEdgeRef.current = edgeId;
-              
-              setEdges(eds => 
-                eds.map(e => ({
-                  ...e,
-                  data: {
-                    ...e.data,
-                    transitInProgress: e.id === edgeId,
-                    transitProgress: e.id === edgeId ? transitProgress : 0
-                  }
-                }))
-              );
-            }
-            
-            if (onUnitPositionUpdate) onUnitPositionUpdate(null);
-            
-            if (transitProgress >= 1) {
-              inTransit = false;
-              transitProgress = 0;
-              activeEdgeRef.current = null;
-              
-              setEdges(eds => 
-                eds.map(e => ({
-                  ...e,
-                  data: {
-                    ...e.data,
-                    transitInProgress: false,
-                    transitProgress: 0
-                  }
-                }))
-              );
-            } else {
-              animationFrameRef.current = requestAnimationFrame(animate);
-              return;
+              transitEdges.set(edgeId, path.transitProgress);
             }
           }
+          
+          if (path.transitProgress >= 1 || path.transitTime <= 0) {
+            // Transit complete, start processing at the target node
+            nextActivePaths.push({
+              nodeId: path.transitTo,
+              progress: 0,
+              inTransit: false,
+              transitTo: '',
+              transitTime: 0,
+              transitProgress: 0
+            });
+            
+            activeNodeIds.add(path.transitTo);
+          } else {
+            // Continue transit
+            nextActivePaths.push({...path});
+          }
+        } else {
+          // Handle processing at a node
+          const nodeData = nodeDataMap.get(path.nodeId);
+          if (!nodeData) return;
+          
+          activeNodeIds.add(path.nodeId);
+          
+          const cycleDuration = nodeData.cycleTime || 0;
+          const maxCapacity = nodeData.maxCapacity || 1;
+          const adjustedCycleDuration = cycleDuration / maxCapacity;
+          
+          path.progress += delta * simulationSpeed / adjustedCycleDuration;
+          
+          if (path.progress >= 1) {
+            // Node processing complete, check for next nodes
+            const nextNodes = edgeMap.get(path.nodeId) || [];
+            
+            if (nextNodes.length === 0) {
+              // End of the line for this path
+            } else {
+              // Create a new path for each connected node
+              nextNodes.forEach(({ targetId, transitTime }) => {
+                nextActivePaths.push({
+                  nodeId: path.nodeId,
+                  progress: 1,
+                  inTransit: true,
+                  transitTo: targetId,
+                  transitTime: transitTime,
+                  transitProgress: 0
+                });
+              });
+            }
+          } else {
+            // Continue processing at this node
+            nextActivePaths.push({...path});
+          }
         }
-      }
+      });
       
-      const currentStep = fullPath[currentPathIndex];
-      const currentNodeId = currentStep.nodeId;
-      const currentNodeData = nodeDataMap.get(currentNodeId);
+      // Update active paths for next frame
+      activePaths.length = 0;
+      activePaths.push(...nextActivePaths);
       
-      if (!currentNodeData) {
-        currentPathIndex++;
-        inTransit = true;
-        transitProgress = 0;
-        animationFrameRef.current = requestAnimationFrame(animate);
-        return;
-      }
-      
-      const cycleDuration = currentNodeData.cycleTime * 1000 / simulationSpeed;
-      const maxCapacity = currentNodeData.maxCapacity || 1;
-      const adjustedCycleDuration = cycleDuration / maxCapacity;
-      
-      const stepSize = delta * 1000 / adjustedCycleDuration;
-      progressWithinNode += stepSize;
-      
+      // Update node states
       setNodes(nds => 
         nds.map(node => ({
           ...node,
           data: {
             ...node.data,
-            active: node.id === currentNodeId,
-            progress: node.id === currentNodeId ? Math.min(progressWithinNode, 1) : undefined
+            active: activeNodeIds.has(node.id),
+            progress: nextActivePaths.find(p => p.nodeId === node.id && !p.inTransit)?.progress
           }
         }))
       );
       
-      setCurrentUnitPosition({ 
-        nodeId: currentNodeId, 
-        progress: Math.min(progressWithinNode, 1) 
-      });
-      
-      if (onUnitPositionUpdate) {
-        onUnitPositionUpdate({ 
-          nodeId: currentNodeId, 
-          progress: Math.min(progressWithinNode, 1) 
-        });
-      }
-      
-      if (progressWithinNode >= 1) {
-        progressWithinNode = 0;
-        currentPathIndex++;
-        inTransit = true;
-        transitProgress = 0;
-        
-        if (currentPathIndex < fullPath.length) {
-          const currentNodeId = fullPath[currentPathIndex - 1].nodeId;
-          const nextNodeId = fullPath[currentPathIndex].nodeId;
-          
-          const edgeId = edges.find(
-            e => e.source === currentNodeId && e.target === nextNodeId
-          )?.id;
-          
-          if (edgeId) {
-            activeEdgeRef.current = edgeId;
+      // Update edge states
+      setEdges(eds => 
+        eds.map(e => ({
+          ...e,
+          data: {
+            ...e.data,
+            transitInProgress: transitEdges.has(e.id),
+            transitProgress: transitEdges.get(e.id) || 0
           }
+        }))
+      );
+      
+      // Update current unit position for the UI (just use the first active node as the "current" one)
+      const primaryPath = nextActivePaths[0];
+      if (primaryPath && !primaryPath.inTransit) {
+        setCurrentUnitPosition({ 
+          nodeId: primaryPath.nodeId, 
+          progress: primaryPath.progress 
+        });
+        
+        if (onUnitPositionUpdate) {
+          onUnitPositionUpdate({ 
+            nodeId: primaryPath.nodeId, 
+            progress: primaryPath.progress 
+          });
         }
+      } else if (onUnitPositionUpdate) {
+        onUnitPositionUpdate(null);
       }
       
       animationFrameRef.current = requestAnimationFrame(animate);
     };
     
     animationFrameRef.current = requestAnimationFrame(animate);
-  }, [edges, nodes, setNodes, simulationSpeed, onUnitPositionUpdate]);
+  }, [edges, nodes, setNodes, simulationSpeed, onUnitPositionUpdate, setEdges]);
   
   const onInit = useCallback((instance: ReactFlowInstance) => {
     setReactFlowInstance(instance);
@@ -422,6 +405,104 @@ const FactoryEditor = ({
   const onConnectEnd = useCallback((event: MouseEvent) => {
     setPendingConnection(null);
   }, []);
+  
+  // Proximity connection functions
+  const getClosestNode = useCallback((node: Node) => {
+    const { nodeLookup } = store.getState();
+    const internalNode = getInternalNode(node.id);
+    
+    if (!internalNode || !internalNode.internals?.positionAbsolute) {
+      return null;
+    }
+    
+    const closestNode = Array.from(nodeLookup.values()).reduce(
+      (res, n) => {
+        if (n.id !== node.id && n.internals?.positionAbsolute) {
+          const dx = n.internals.positionAbsolute.x - internalNode.internals.positionAbsolute.x;
+          const dy = n.internals.positionAbsolute.y - internalNode.internals.positionAbsolute.y;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          
+          if (d < res.distance && d < MIN_DISTANCE) {
+            res.distance = d;
+            res.node = n;
+          }
+        }
+        
+        return res;
+      },
+      {
+        distance: Number.MAX_VALUE,
+        node: null,
+      },
+    );
+    
+    if (!closestNode.node) {
+      return null;
+    }
+    
+    const closeNodeIsSource = 
+      closestNode.node.internals.positionAbsolute.x < 
+      internalNode.internals.positionAbsolute.x;
+    
+    return {
+      id: closeNodeIsSource
+        ? `${closestNode.node.id}-${node.id}`
+        : `${node.id}-${closestNode.node.id}`,
+      source: closeNodeIsSource ? closestNode.node.id : node.id,
+      target: closeNodeIsSource ? node.id : closestNode.node.id,
+    };
+  }, [store, getInternalNode]);
+  
+  const onNodeDrag = useCallback((_, node) => {
+    if (isSimulating) return;
+    
+    const closeEdge = getClosestNode(node);
+    
+    setEdges((es) => {
+      const nextEdges = es.filter((e) => e.className !== 'temp');
+      
+      if (closeEdge && !nextEdges.find(
+        (ne) => ne.source === closeEdge.source && ne.target === closeEdge.target
+      )) {
+        closeEdge.className = 'temp';
+        nextEdges.push({
+          ...closeEdge,
+          type: 'default',
+          style: { strokeDasharray: '5,5' },
+          data: { transitTime: 0 }
+        });
+      }
+      
+      return nextEdges;
+    });
+  }, [getClosestNode, setEdges, isSimulating]);
+  
+  const onNodeDragStop = useCallback((_, node) => {
+    if (isSimulating) return;
+    
+    const closeEdge = getClosestNode(node);
+    
+    setEdges((es) => {
+      const nextEdges = es.filter((e) => e.className !== 'temp');
+      
+      if (closeEdge && !nextEdges.find(
+        (ne) => ne.source === closeEdge.source && ne.target === closeEdge.target
+      )) {
+        toast({
+          title: "Connection created",
+          description: "Nodes connected automatically due to proximity",
+        });
+        
+        nextEdges.push({
+          ...closeEdge,
+          type: 'default',
+          data: { transitTime: 0 }
+        });
+      }
+      
+      return nextEdges;
+    });
+  }, [getClosestNode, setEdges, isSimulating]);
 
   const onDrop = useCallback(
     (event: React.DragEvent) => {
@@ -576,7 +657,7 @@ const FactoryEditor = ({
     setShowConnectionAlert(false);
   }, [pendingConnection, findBestNodePosition, setNodes, setEdges]);
   
-  const onNodeDragStop = useCallback((event: any, node: Node) => {
+  const onNodeDragStopGrid = useCallback((event: any, node: Node) => {
     if (!snapToGrid) return;
     
     const newNodes = nodes.map(n => {
@@ -625,7 +706,8 @@ const FactoryEditor = ({
           onDrop={onDrop}
           onDragOver={onDragOver}
           onDragLeave={onDragLeave}
-          onNodeDragStop={onNodeDragStop}
+          onNodeDragStop={onNodeDragStopGrid}
+          onNodeDrag={onNodeDrag}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           defaultEdgeOptions={{

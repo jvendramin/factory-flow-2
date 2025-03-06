@@ -32,7 +32,8 @@ const ConfigurableEdge = ({
   style = {},
   markerEnd,
   data,
-  label
+  label,
+  className
 }: EdgeProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [showButtons, setShowButtons] = useState(false);
@@ -119,93 +120,102 @@ const ConfigurableEdge = ({
     e.stopPropagation();
     deleteElements({ edges: [{ id }] });
   };
+  
+  // If this is a temporary edge (during proximity connection), use dashed styling
+  const combinedStyle = {
+    ...style,
+    ...((className === 'temp') ? { strokeDasharray: '5,5' } : {})
+  };
 
   return (
     <>
-      <BaseEdge path={edgePath} markerEnd={markerEnd} style={style} />
-      <EdgeLabelRenderer>
-        <div
-          ref={edgeRef}
-          className="nodrag nopan absolute"
-          style={{
-            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
-            pointerEvents: 'all',
-            cursor: 'pointer',
-            padding: '8px',
-          }}
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
-        >
-          <Popover open={isEditing} onOpenChange={setIsEditing}>
-            <PopoverTrigger asChild>
-              <div className="relative inline-block">
-                <Badge 
-                  variant="secondary" 
-                  className="cursor-pointer hover:bg-secondary/90 shadow-sm border border-border"
+      <BaseEdge path={edgePath} markerEnd={markerEnd} style={combinedStyle} className={className} />
+      {/* Only show controls if this is not a temporary edge */}
+      {className !== 'temp' && (
+        <EdgeLabelRenderer>
+          <div
+            ref={edgeRef}
+            className="nodrag nopan absolute"
+            style={{
+              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+              pointerEvents: 'all',
+              cursor: 'pointer',
+              padding: '8px',
+            }}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+          >
+            <Popover open={isEditing} onOpenChange={setIsEditing}>
+              <PopoverTrigger asChild>
+                <div className="relative inline-block">
+                  <Badge 
+                    variant="secondary" 
+                    className="cursor-pointer hover:bg-secondary/90 shadow-sm border border-border"
+                    onClick={() => setIsEditing(true)}
+                  >
+                    {transitTime > 0 ? `${transitTime}s` : '0s'}
+                  </Badge>
+                </div>
+              </PopoverTrigger>
+              <PopoverContent className="w-48 p-2 z-50" side="top">
+                <div className="space-y-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="transitTime">Transit Time (seconds)</Label>
+                    <Input
+                      id="transitTime"
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={transitTime}
+                      onChange={handleTransitTimeChange}
+                      onKeyDown={handleKeyDown}
+                      autoFocus
+                    />
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {showButtons && (
+              <div 
+                className="absolute -top-8 -right-1 inline-flex -space-x-px rounded-lg shadow-sm shadow-black/5 rtl:space-x-reverse"
+                onMouseEnter={handleMouseEnter}
+              >
+                <Button
+                  className="rounded-none shadow-none first:rounded-s-lg last:rounded-e-lg focus-visible:z-10 h-6 w-6"
+                  variant="outline"
+                  size="icon"
+                  aria-label="Edit"
                   onClick={() => setIsEditing(true)}
                 >
-                  {transitTime > 0 ? `${transitTime}s` : '0s'}
-                </Badge>
+                  <PencilIcon size={12} strokeWidth={2} aria-hidden="true" />
+                </Button>
+                <Button
+                  className="rounded-none shadow-none first:rounded-s-lg last:rounded-e-lg focus-visible:z-10 h-6 w-6"
+                  variant="outline"
+                  size="icon"
+                  aria-label="Delete"
+                  onClick={handleDeleteEdge}
+                >
+                  <TrashIcon size={12} strokeWidth={2} aria-hidden="true" />
+                </Button>
               </div>
-            </PopoverTrigger>
-            <PopoverContent className="w-48 p-2 z-50" side="top">
-              <div className="space-y-2">
-                <div className="space-y-1">
-                  <Label htmlFor="transitTime">Transit Time (seconds)</Label>
-                  <Input
-                    id="transitTime"
-                    type="number"
-                    min="0"
-                    step="0.1"
-                    value={transitTime}
-                    onChange={handleTransitTimeChange}
-                    onKeyDown={handleKeyDown}
-                    autoFocus
-                  />
-                </div>
+            )}
+
+            {data?.transitInProgress && (
+              <div 
+                className="absolute top-0 left-0"
+                style={{ 
+                  transform: `translate(${data.transitProgress * 100}%, -50%)`,
+                  transition: 'transform 0.1s ease-out'
+                }}
+              >
+                <TruckIcon size={18} className="text-primary" />
               </div>
-            </PopoverContent>
-          </Popover>
-
-          {showButtons && (
-            <div 
-              className="absolute -top-8 -right-1 inline-flex -space-x-px rounded-lg shadow-sm shadow-black/5 rtl:space-x-reverse"
-              onMouseEnter={handleMouseEnter}
-            >
-              <Button
-                className="rounded-none shadow-none first:rounded-s-lg last:rounded-e-lg focus-visible:z-10 h-6 w-6"
-                variant="outline"
-                size="icon"
-                aria-label="Edit"
-                onClick={() => setIsEditing(true)}
-              >
-                <PencilIcon size={12} strokeWidth={2} aria-hidden="true" />
-              </Button>
-              <Button
-                className="rounded-none shadow-none first:rounded-s-lg last:rounded-e-lg focus-visible:z-10 h-6 w-6"
-                variant="outline"
-                size="icon"
-                aria-label="Delete"
-                onClick={handleDeleteEdge}
-              >
-                <TrashIcon size={12} strokeWidth={2} aria-hidden="true" />
-              </Button>
-            </div>
-          )}
-
-          {data?.transitInProgress && (
-            <div 
-              className="absolute top-0 left-0"
-              style={{ 
-                transform: `translate(${data.transitProgress * 100}%, -50%)`,
-                transition: 'transform 0.1s ease-out'
-              }}
-            >
-              <TruckIcon size={18} className="text-primary" />
-            </div>
-          )}
-        </div>
-      </EdgeLabelRenderer>
+            )}
+          </div>
+        </EdgeLabelRenderer>
+      )}
     </>
   );
 };
