@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useRef, useEffect } from 'react';
 import ReactFlow, {
   Background,
@@ -32,7 +33,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ArrowRightCircle } from 'lucide-react';
 import LiveStatsPanel from './LiveStatsPanel';
 
-const MIN_DISTANCE = 150;
+// Change MIN_DISTANCE to match 3 grid dots (20px per dot)
+const MIN_DISTANCE = 60;
+
+// Group/subflow creation threshold
+const GROUP_THRESHOLD = 30;
 
 const nodeTypes: NodeTypes = {
   equipment: EquipmentNode,
@@ -77,6 +82,7 @@ const FactoryEditorContent = ({
   const [currentUnitPosition, setCurrentUnitPosition] = useState<{ nodeId: string, progress: number } | null>(null);
   const [showGrid, setShowGrid] = useState(true);
   const [snapToGrid, setSnapToGrid] = useState(true);
+  const [potentialGroupTarget, setPotentialGroupTarget] = useState<string | null>(null);
   
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number | null>(null);
@@ -163,17 +169,42 @@ const FactoryEditorContent = ({
       edgeMap.set(edge.source, sources);
     });
     
-    const allTargets = new Set(edges.map(e => e.target));
-    const startNodeId = nodes.find(n => !allTargets.has(n.id))?.id;
+    // Find connected nodes by traversing the edge map from any source node
+    const connectedNodes = new Set<string>();
+    const findConnectedNodes = (nodeId: string) => {
+      if (connectedNodes.has(nodeId)) return;
+      connectedNodes.add(nodeId);
+      
+      const outgoingEdges = edgeMap.get(nodeId) || [];
+      outgoingEdges.forEach(edge => {
+        findConnectedNodes(edge.targetId);
+      });
+    };
     
-    if (!startNodeId) {
+    // Find nodes that have incoming connections (targets)
+    const allTargets = new Set(edges.map(e => e.target));
+    
+    // Filter nodes that have no incoming connections (sources)
+    const startNodeIds = nodes.filter(n => 
+      !allTargets.has(n.id) && 
+      edgeMap.has(n.id) && 
+      edgeMap.get(n.id)!.length > 0
+    ).map(n => n.id);
+    
+    // If no clear starting points, don't run the simulation
+    if (startNodeIds.length === 0) {
       toast({
         title: "Simulation Error",
-        description: "Could not identify the starting point of your process flow.",
+        description: "Could not identify the starting point of your process flow. Ensure nodes are connected.",
         variant: "destructive"
       });
       return;
     }
+    
+    // Identify all connected nodes in the flow
+    startNodeIds.forEach(nodeId => {
+      findConnectedNodes(nodeId);
+    });
     
     const activePaths: {
       nodeId: string,
@@ -182,14 +213,14 @@ const FactoryEditorContent = ({
       transitTo: string,
       transitTime: number,
       transitProgress: number
-    }[] = [{ 
-      nodeId: startNodeId, 
+    }[] = startNodeIds.map(id => ({ 
+      nodeId: id, 
       progress: 0, 
       inTransit: false,
       transitTo: '', 
       transitTime: 0,
       transitProgress: 0
-    }];
+    }));
     
     const nodeDataMap = new Map(nodes.map(n => [n.id, n.data]));
     
@@ -214,10 +245,13 @@ const FactoryEditorContent = ({
         const nodeUtilizations = new Map<string, number>();
         const nodeCycles = new Map<string, number>();
         
-        let bottleneckId = startNodeId;
+        let bottleneckId = startNodeIds[0];
         let maxCycleTime = 0;
         
+        // Only calculate utilization for connected nodes
         nodes.forEach(node => {
+          if (!connectedNodes.has(node.id)) return;
+          
           const nodeData = nodeDataMap.get(node.id);
           if (!nodeData) return;
           
@@ -236,6 +270,19 @@ const FactoryEditorContent = ({
         
         setNodes(nds => 
           nds.map(node => {
+            // Only connected nodes participate in simulation
+            if (!connectedNodes.has(node.id)) {
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  active: false,
+                  utilization: 0,
+                  bottleneck: false
+                }
+              };
+            }
+            
             return {
               ...node,
               data: {
@@ -299,6 +346,7 @@ const FactoryEditorContent = ({
             const nextNodes = edgeMap.get(path.nodeId) || [];
             
             if (nextNodes.length === 0) {
+              // End of path
             } else {
               nextNodes.forEach(({ targetId, transitTime }) => {
                 nextActivePaths.push({
@@ -417,7 +465,7 @@ const FactoryEditorContent = ({
     let closestNode: Node | null = null;
     
     flowNodes.forEach(n => {
-      if (n.id !== node.id) {
+      if (n.id !== node.id && !n.parentId) {
         const dx = n.position.x - currentPosition.x;
         const dy = n.position.y - currentPosition.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
@@ -444,9 +492,48 @@ const FactoryEditorContent = ({
     };
   }, [store, getNodes]);
   
+  const isNodeOverlapping = useCallback((draggingNode: Node): string | null => {
+    if (draggingNode.parentId) return null; // Don't check nodes already in a group
+    
+    const flowNodes = getNodes();
+    const currentNode = flowNodes.find(n => n.id === draggingNode.id);
+    
+    if (!currentNode || !currentNode.position) {
+      return null;
+    }
+
+    // Find node dimensions (approximate)
+    const nodeWidth = 240; // Equipment node width
+    const nodeHeight = 180; // Equipment node height
+    
+    const currentX = currentNode.position.x;
+    const currentY = currentNode.position.y;
+    
+    // Check if current node overlaps with any other node
+    for (const node of flowNodes) {
+      if (node.id !== draggingNode.id && !node.parentId && node.type !== 'group') {
+        const targetX = node.position.x;
+        const targetY = node.position.y;
+        
+        // Check if centers are close enough to indicate overlap
+        const distance = Math.sqrt(
+          Math.pow(targetX - currentX, 2) + 
+          Math.pow(targetY - currentY, 2)
+        );
+        
+        if (distance < GROUP_THRESHOLD) {
+          return node.id;
+        }
+      }
+    }
+    
+    return null;
+  }, [getNodes]);
+  
   const onNodeDrag: NodeDragHandler = useCallback((_, node) => {
     if (isSimulating) return;
     
+    // Handle proximity connections
     const closeEdge = getClosestNode(node);
     
     setEdges((es) => {
@@ -466,11 +553,96 @@ const FactoryEditorContent = ({
       
       return nextEdges;
     });
-  }, [getClosestNode, setEdges, isSimulating]);
+    
+    // Handle potential grouping
+    const overlappingNodeId = isNodeOverlapping(node);
+    setPotentialGroupTarget(overlappingNodeId);
+    
+    // Highlight the node that would be grouped
+    if (overlappingNodeId) {
+      setNodes(nodes => 
+        nodes.map(n => {
+          if (n.id === overlappingNodeId) {
+            return {
+              ...n,
+              className: 'potential-group-target'
+            };
+          }
+          return {
+            ...n,
+            className: n.className?.replace('potential-group-target', '') || ''
+          };
+        })
+      );
+    } else {
+      // Remove highlighting if no longer overlapping
+      setNodes(nodes => 
+        nodes.map(n => ({
+          ...n,
+          className: n.className?.replace('potential-group-target', '') || ''
+        }))
+      );
+    }
+  }, [getClosestNode, setEdges, isSimulating, isNodeOverlapping, setNodes]);
+  
+  const createGroup = useCallback((nodeId: string, targetId: string) => {
+    // Find the positions of both nodes
+    const nodeA = nodes.find(n => n.id === nodeId);
+    const nodeB = nodes.find(n => n.id === targetId);
+    
+    if (!nodeA || !nodeB) return;
+    
+    // Create a group node
+    const groupId = `group-${Date.now()}`;
+    
+    // Calculate group position and dimensions
+    const left = Math.min(nodeA.position.x, nodeB.position.x) - 40;
+    const top = Math.min(nodeA.position.y, nodeB.position.y) - 40;
+    const right = Math.max(nodeA.position.x + 240, nodeB.position.x + 240) + 40;
+    const bottom = Math.max(nodeA.position.y + 180, nodeB.position.y + 180) + 40;
+    
+    const width = right - left;
+    const height = bottom - top;
+    
+    // Create the group node
+    const groupNode: Node = {
+      id: groupId,
+      type: 'group',
+      position: { x: left, y: top },
+      style: { width, height },
+      data: { label: 'Equipment Group' },
+    };
+    
+    // Update the child nodes to be part of the group
+    const updatedNodes = nodes.map(n => {
+      if (n.id === nodeId || n.id === targetId) {
+        return {
+          ...n,
+          position: {
+            x: n.position.x - left,
+            y: n.position.y - top
+          },
+          parentId: groupId,
+          extent: 'parent',
+          className: ''
+        };
+      }
+      return n;
+    });
+    
+    // Add the group node to the nodes array
+    setNodes([...updatedNodes, groupNode]);
+    
+    toast({
+      title: "Group Created",
+      description: "Equipment has been grouped together",
+    });
+  }, [nodes, setNodes]);
   
   const onNodeDragStop: NodeDragHandler = useCallback((_, node) => {
     if (isSimulating) return;
     
+    // Handle proximity connection
     const closeEdge = getClosestNode(node);
     
     setEdges((es) => {
@@ -493,7 +665,21 @@ const FactoryEditorContent = ({
       
       return nextEdges;
     });
-  }, [getClosestNode, setEdges, isSimulating]);
+    
+    // Handle group creation if nodes are overlapping
+    if (potentialGroupTarget) {
+      createGroup(node.id, potentialGroupTarget);
+      setPotentialGroupTarget(null);
+    }
+    
+    // Remove any highlighting
+    setNodes(nodes => 
+      nodes.map(n => ({
+        ...n,
+        className: n.className?.replace('potential-group-target', '') || ''
+      }))
+    );
+  }, [getClosestNode, setEdges, isSimulating, potentialGroupTarget, createGroup, setNodes]);
 
   const onDrop = useCallback(
     (event: React.DragEvent) => {
