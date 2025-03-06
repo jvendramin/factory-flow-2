@@ -127,13 +127,16 @@ const ConfigurableEdge = ({
   };
   
   // If this is a temporary edge (during proximity connection), use dashed styling
+  const isTemp = className === 'temp';
   const combinedStyle = {
     ...style,
-    ...((className === 'temp') ? { strokeDasharray: '5,5' } : {})
+    ...(isTemp ? { 
+      strokeDasharray: '5,5',
+      stroke: 'hsl(var(--primary))',
+      strokeWidth: 1.5,
+      animation: 'dashdraw 0.5s linear infinite'
+    } : {})
   };
-
-  // Add custom CSS class for the edge path if it's a temporary edge
-  const edgePathClasses = className === 'temp' ? 'temp-edge-path' : '';
 
   return (
     <>
@@ -141,11 +144,10 @@ const ConfigurableEdge = ({
         path={edgePath} 
         markerEnd={markerEnd} 
         style={combinedStyle} 
-        className={edgePathClasses}
       />
       
       {/* Only show controls if this is not a temporary edge */}
-      {className !== 'temp' && (
+      {!isTemp && (
         <EdgeLabelRenderer>
           <div
             ref={edgeRef}
