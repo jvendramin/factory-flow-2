@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import ReactFlow, {
   Background,
@@ -623,7 +622,7 @@ const FactoryEditorContent = ({
             y: n.position.y - top
           },
           parentId: groupId,
-          extent: 'parent',
+          extent: 'parent' as const,
           className: ''
         };
       }
