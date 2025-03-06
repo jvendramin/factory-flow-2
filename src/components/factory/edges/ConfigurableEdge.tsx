@@ -19,6 +19,11 @@ import {
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 
+// Extend EdgeProps to include className property
+interface ConfigurableEdgeProps extends EdgeProps {
+  className?: string;
+}
+
 const ConfigurableEdge = ({
   id,
   source,
@@ -33,8 +38,8 @@ const ConfigurableEdge = ({
   markerEnd,
   data,
   label,
-  className
-}: EdgeProps) => {
+  className,
+}: ConfigurableEdgeProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [showButtons, setShowButtons] = useState(false);
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
@@ -129,7 +134,13 @@ const ConfigurableEdge = ({
 
   return (
     <>
-      <BaseEdge path={edgePath} markerEnd={markerEnd} style={combinedStyle} className={className} />
+      <BaseEdge 
+        path={edgePath} 
+        markerEnd={markerEnd} 
+        style={combinedStyle} 
+        className={className} 
+      />
+      
       {/* Only show controls if this is not a temporary edge */}
       {className !== 'temp' && (
         <EdgeLabelRenderer>

@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import ReactFlow, {
   Background,
@@ -21,6 +20,7 @@ import ReactFlow, {
   ConnectionLineType,
   BackgroundVariant,
   useStoreApi,
+  NodeDragHandler,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { toast } from '@/components/ui/use-toast';
@@ -48,6 +48,19 @@ interface FactoryEditorProps {
   onUnitPositionUpdate?: (position: { nodeId: string, progress: number } | null) => void;
 }
 
+interface InternalNode {
+  id: string;
+  position: XYPosition;
+  internals?: {
+    positionAbsolute?: XYPosition;
+  };
+}
+
+interface ClosestNodeResult {
+  distance: number;
+  node: InternalNode | null;
+}
+
 const FactoryEditor = ({ 
   isSimulating, 
   simulationMode = "instant",
@@ -69,7 +82,7 @@ const FactoryEditor = ({
   const lastTimestamp = useRef<number>(0);
   const activeEdgeRef = useRef<string | null>(null);
   const store = useStoreApi();
-  const { getInternalNode } = useReactFlow();
+  const { getNodes, getEdges, project } = useReactFlow();
   
   useEffect(() => {
     if (isSimulating && simulationMode === "play-by-play") {
@@ -140,7 +153,6 @@ const FactoryEditor = ({
   const startPlayByPlaySimulation = useCallback(() => {
     const edgeMap = new Map<string, { targetId: string, transitTime: number }[]>();
     
-    // Build a map of source nodes to their target nodes for concurrent processing
     edges.forEach(edge => {
       const sources = edgeMap.get(edge.source) || [];
       sources.push({ 
@@ -162,7 +174,6 @@ const FactoryEditor = ({
       return;
     }
     
-    // Initialize our active paths array to handle concurrent paths
     const activePaths: {
       nodeId: string,
       progress: number,
@@ -194,17 +205,14 @@ const FactoryEditor = ({
       lastTimestamp.current = timestamp;
       
       if (activePaths.length === 0) {
-        // All paths have completed
         toast({
           title: "Simulation Complete",
           description: "All units have completed the process flow."
         });
         
-        // Calculate statistics for all nodes
         const nodeUtilizations = new Map<string, number>();
         const nodeCycles = new Map<string, number>();
         
-        // Find the bottleneck
         let bottleneckId = startNodeId;
         let maxCycleTime = 0;
         
@@ -221,12 +229,10 @@ const FactoryEditor = ({
             bottleneckId = node.id;
           }
           
-          // Calculate utilization based on cycle time and capacity
           const utilization = Math.min(100, Math.round((adjustedCycleTime / maxCycleTime) * 100));
           nodeUtilizations.set(node.id, utilization);
         });
         
-        // Update nodes with utilization data
         setNodes(nds => 
           nds.map(node => {
             return {
@@ -244,19 +250,15 @@ const FactoryEditor = ({
         return;
       }
       
-      // Process all active paths
       const nextActivePaths: typeof activePaths = [];
       const activeNodeIds = new Set<string>();
       const transitEdges = new Map<string, number>();
       
-      // Update all active paths
       activePaths.forEach(path => {
         if (path.inTransit) {
-          // Handle transit between nodes
           path.transitProgress += delta * simulationSpeed / path.transitTime;
           
           if (path.transitTime > 0) {
-            // Find the edge for this transit
             const edgeId = edges.find(
               e => e.source === path.nodeId && e.target === path.transitTo
             )?.id;
@@ -267,7 +269,6 @@ const FactoryEditor = ({
           }
           
           if (path.transitProgress >= 1 || path.transitTime <= 0) {
-            // Transit complete, start processing at the target node
             nextActivePaths.push({
               nodeId: path.transitTo,
               progress: 0,
@@ -279,11 +280,9 @@ const FactoryEditor = ({
             
             activeNodeIds.add(path.transitTo);
           } else {
-            // Continue transit
             nextActivePaths.push({...path});
           }
         } else {
-          // Handle processing at a node
           const nodeData = nodeDataMap.get(path.nodeId);
           if (!nodeData) return;
           
@@ -296,13 +295,10 @@ const FactoryEditor = ({
           path.progress += delta * simulationSpeed / adjustedCycleDuration;
           
           if (path.progress >= 1) {
-            // Node processing complete, check for next nodes
             const nextNodes = edgeMap.get(path.nodeId) || [];
             
             if (nextNodes.length === 0) {
-              // End of the line for this path
             } else {
-              // Create a new path for each connected node
               nextNodes.forEach(({ targetId, transitTime }) => {
                 nextActivePaths.push({
                   nodeId: path.nodeId,
@@ -315,17 +311,14 @@ const FactoryEditor = ({
               });
             }
           } else {
-            // Continue processing at this node
             nextActivePaths.push({...path});
           }
         }
       });
       
-      // Update active paths for next frame
       activePaths.length = 0;
       activePaths.push(...nextActivePaths);
       
-      // Update node states
       setNodes(nds => 
         nds.map(node => ({
           ...node,
@@ -337,7 +330,6 @@ const FactoryEditor = ({
         }))
       );
       
-      // Update edge states
       setEdges(eds => 
         eds.map(e => ({
           ...e,
@@ -349,7 +341,6 @@ const FactoryEditor = ({
         }))
       );
       
-      // Update current unit position for the UI (just use the first active node as the "current" one)
       const primaryPath = nextActivePaths[0];
       if (primaryPath && !primaryPath.inTransit) {
         setCurrentUnitPosition({ 
@@ -406,54 +397,53 @@ const FactoryEditor = ({
     setPendingConnection(null);
   }, []);
   
-  // Proximity connection functions
-  const getClosestNode = useCallback((node: Node) => {
-    const { nodeLookup } = store.getState();
-    const internalNode = getInternalNode(node.id);
+  const getClosestNode = useCallback((node: Node): { id: string; source: string; target: string; className?: string } | null => {
+    const storeState = store.getState();
+    const flowNodes = getNodes();
     
-    if (!internalNode || !internalNode.internals?.positionAbsolute) {
+    const currentNode = flowNodes.find(n => n.id === node.id);
+    
+    if (!currentNode || !currentNode.position) {
       return null;
     }
+
+    const currentPosition = {
+      x: currentNode.position.x,
+      y: currentNode.position.y,
+    };
     
-    const closestNode = Array.from(nodeLookup.values()).reduce(
-      (res, n) => {
-        if (n.id !== node.id && n.internals?.positionAbsolute) {
-          const dx = n.internals.positionAbsolute.x - internalNode.internals.positionAbsolute.x;
-          const dy = n.internals.positionAbsolute.y - internalNode.internals.positionAbsolute.y;
-          const d = Math.sqrt(dx * dx + dy * dy);
-          
-          if (d < res.distance && d < MIN_DISTANCE) {
-            res.distance = d;
-            res.node = n;
-          }
-        }
+    let closestDistance = Number.MAX_VALUE;
+    let closestNode: Node | null = null;
+    
+    flowNodes.forEach(n => {
+      if (n.id !== node.id) {
+        const dx = n.position.x - currentPosition.x;
+        const dy = n.position.y - currentPosition.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
         
-        return res;
-      },
-      {
-        distance: Number.MAX_VALUE,
-        node: null,
-      },
-    );
+        if (distance < closestDistance && distance < MIN_DISTANCE) {
+          closestDistance = distance;
+          closestNode = n;
+        }
+      }
+    });
     
-    if (!closestNode.node) {
+    if (!closestNode) {
       return null;
     }
     
-    const closeNodeIsSource = 
-      closestNode.node.internals.positionAbsolute.x < 
-      internalNode.internals.positionAbsolute.x;
+    const closeNodeIsSource = closestNode.position.x < currentPosition.x;
     
     return {
       id: closeNodeIsSource
-        ? `${closestNode.node.id}-${node.id}`
-        : `${node.id}-${closestNode.node.id}`,
-      source: closeNodeIsSource ? closestNode.node.id : node.id,
-      target: closeNodeIsSource ? node.id : closestNode.node.id,
+        ? `${closestNode.id}-${node.id}`
+        : `${node.id}-${closestNode.id}`,
+      source: closeNodeIsSource ? closestNode.id : node.id,
+      target: closeNodeIsSource ? node.id : closestNode.id,
     };
-  }, [store, getInternalNode]);
+  }, [store, getNodes]);
   
-  const onNodeDrag = useCallback((_, node) => {
+  const onNodeDrag: NodeDragHandler = useCallback((_, node) => {
     if (isSimulating) return;
     
     const closeEdge = getClosestNode(node);
@@ -477,7 +467,7 @@ const FactoryEditor = ({
     });
   }, [getClosestNode, setEdges, isSimulating]);
   
-  const onNodeDragStop = useCallback((_, node) => {
+  const onNodeDragStop: NodeDragHandler = useCallback((_, node) => {
     if (isSimulating) return;
     
     const closeEdge = getClosestNode(node);
