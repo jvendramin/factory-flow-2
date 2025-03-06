@@ -21,6 +21,7 @@ import ReactFlow, {
   BackgroundVariant,
   useStoreApi,
   NodeDragHandler,
+  ReactFlowProvider,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { toast } from '@/components/ui/use-toast';
@@ -61,7 +62,7 @@ interface ClosestNodeResult {
   node: InternalNode | null;
 }
 
-const FactoryEditor = ({ 
+const FactoryEditorContent = ({ 
   isSimulating, 
   simulationMode = "instant",
   simulationSpeed = 1,
@@ -759,6 +760,14 @@ const FactoryEditor = ({
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+};
+
+const FactoryEditor = (props: FactoryEditorProps) => {
+  return (
+    <ReactFlowProvider>
+      <FactoryEditorContent {...props} />
+    </ReactFlowProvider>
   );
 };
 
