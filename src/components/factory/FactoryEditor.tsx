@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useRef, useEffect } from 'react';
 import ReactFlow, {
   Background,
@@ -26,6 +27,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { toast } from '@/components/ui/use-toast';
 import EquipmentNode from './nodes/EquipmentNode';
+import GroupNode from './nodes/GroupNode';
 import ConfigurableEdge from './edges/ConfigurableEdge';
 import { Equipment, FlowEdge, PathStep } from '@/types/equipment';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -37,6 +39,7 @@ const GROUP_THRESHOLD = 30;
 
 const nodeTypes: NodeTypes = {
   equipment: EquipmentNode,
+  group: GroupNode,
 };
 
 const edgeTypes: EdgeTypes = {
@@ -166,9 +169,28 @@ const FactoryEditorContent = ({
     });
     
     const connectedNodes = new Set<string>();
+    // Group parent-child relationship map
+    const groupChildrenMap = new Map<string, string[]>();
+    
+    // Build the group-children map
+    nodes.forEach(node => {
+      if (node.parentId) {
+        const children = groupChildrenMap.get(node.parentId) || [];
+        children.push(node.id);
+        groupChildrenMap.set(node.parentId, children);
+      }
+    });
+    
     const findConnectedNodes = (nodeId: string) => {
       if (connectedNodes.has(nodeId)) return;
       connectedNodes.add(nodeId);
+      
+      // Add all children of a group node to connected nodes
+      if (groupChildrenMap.has(nodeId)) {
+        groupChildrenMap.get(nodeId)?.forEach(childId => {
+          connectedNodes.add(childId);
+        });
+      }
       
       const outgoingEdges = edgeMap.get(nodeId) || [];
       outgoingEdges.forEach(edge => {
@@ -178,6 +200,7 @@ const FactoryEditorContent = ({
     
     const allTargets = new Set(edges.map(e => e.target));
     
+    // Find nodes that have no incoming edges but have outgoing edges
     const startNodeIds = nodes.filter(n => 
       !allTargets.has(n.id) && 
       edgeMap.has(n.id) && 
@@ -203,14 +226,18 @@ const FactoryEditorContent = ({
       inTransit: boolean,
       transitTo: string,
       transitTime: number,
-      transitProgress: number
+      transitProgress: number,
+      isGroup?: boolean,
+      groupChildren?: string[]
     }[] = startNodeIds.map(id => ({ 
       nodeId: id, 
       progress: 0, 
       inTransit: false,
       transitTo: '', 
       transitTime: 0,
-      transitProgress: 0
+      transitProgress: 0,
+      isGroup: nodes.find(n => n.id === id)?.type === 'group',
+      groupChildren: groupChildrenMap.get(id)
     }));
     
     const nodeDataMap = new Map(nodes.map(n => [n.id, n.data]));
@@ -325,8 +352,32 @@ const FactoryEditorContent = ({
           
           activeNodeIds.add(path.nodeId);
           
-          const cycleDuration = nodeData.cycleTime || 0;
-          const maxCapacity = nodeData.maxCapacity || 1;
+          // If this is a group node, add all children as active
+          if (path.isGroup && path.groupChildren) {
+            path.groupChildren.forEach(childId => {
+              activeNodeIds.add(childId);
+            });
+          }
+          
+          // Calculate cycle time based on if it's a group or regular node
+          let cycleDuration = nodeData.cycleTime || 0;
+          let maxCapacity = nodeData.maxCapacity || 1;
+          
+          // For group nodes, use the maximum cycle time of all children
+          if (path.isGroup && path.groupChildren) {
+            // Process all children concurrently, using the slowest child's cycle time
+            let maxChildCycleTime = 0;
+            path.groupChildren.forEach(childId => {
+              const childData = nodeDataMap.get(childId);
+              if (childData) {
+                const childCycleTime = (childData.cycleTime || 0) / (childData.maxCapacity || 1);
+                maxChildCycleTime = Math.max(maxChildCycleTime, childCycleTime);
+              }
+            });
+            
+            cycleDuration = maxChildCycleTime;
+          }
+          
           const adjustedCycleDuration = cycleDuration / maxCapacity;
           
           path.progress += delta * simulationSpeed / adjustedCycleDuration;
@@ -335,6 +386,7 @@ const FactoryEditorContent = ({
             const nextNodes = edgeMap.get(path.nodeId) || [];
             
             if (nextNodes.length === 0) {
+              // End of flow
             } else {
               nextNodes.forEach(({ targetId, transitTime }) => {
                 nextActivePaths.push({
@@ -343,7 +395,9 @@ const FactoryEditorContent = ({
                   inTransit: true,
                   transitTo: targetId,
                   transitTime: transitTime,
-                  transitProgress: 0
+                  transitProgress: 0,
+                  isGroup: nodes.find(n => n.id === targetId)?.type === 'group',
+                  groupChildren: groupChildrenMap.get(targetId)
                 });
               });
             }
@@ -574,6 +628,7 @@ const FactoryEditorContent = ({
     
     const groupId = `group-${Date.now()}`;
     
+    // Calculate the group dimensions to properly contain the nodes
     const left = Math.min(nodeA.position.x, nodeB.position.x) - 40;
     const top = Math.min(nodeA.position.y, nodeB.position.y) - 40;
     const right = Math.max(nodeA.position.x + 240, nodeB.position.x + 240) + 40;
@@ -882,7 +937,9 @@ const FactoryEditorContent = ({
           <Controls />
           <MiniMap 
             nodeColor={(node) => {
-              return isSimulating && node.data?.bottleneck ? '#ef4444' : '#1D4ED8';
+              if (isSimulating && node.data?.bottleneck) return '#ef4444';
+              if (node.type === 'group') return '#94a3b8';
+              return '#1D4ED8';
             }}
           />
         </ReactFlow>

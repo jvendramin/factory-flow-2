@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -110,21 +109,6 @@
   border: 1px dashed #475569;
 }
 
-/* Styling for group node */
-.react-flow__node.react-flow__node-group {
-  background-color: rgba(241, 245, 249, 0.8);
-  border: 1px dashed #94a3b8;
-  border-radius: 6px;
-  padding: 10px;
-  width: 100%;
-  height: 100%;
-}
-
-.dark .react-flow__node.react-flow__node-group {
-  background-color: rgba(30, 41, 59, 0.8);
-  border: 1px dashed #475569;
-}
-
 .react-flow__node-group .group-label {
   position: absolute;
   top: -8px;
@@ -138,4 +122,74 @@
 .dark .react-flow__node-group .group-label {
   background-color: #1e293b;
   color: #f8fafc;
+}
+
+.react-flow__node.react-flow__node-group {
+  background-color: rgba(241, 245, 249, 0.7);
+  border: 1px dashed #94a3b8;
+  border-radius: 8px;
+  padding: 12px;
+  padding-top: 24px;
+  width: 100%;
+  height: 100%;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.dark .react-flow__node.react-flow__node-group {
+  background-color: rgba(30, 41, 59, 0.7);
+  border: 1px dashed #475569;
+}
+
+.react-flow__node.react-flow__node-group:hover {
+  background-color: rgba(241, 245, 249, 0.9);
+  border-color: #64748b;
+}
+
+.dark .react-flow__node.react-flow__node-group:hover {
+  background-color: rgba(30, 41, 59, 0.9);
+  border-color: #64748b;
+}
+
+.react-flow__node.react-flow__node-group.selected {
+  border-color: var(--primary);
+  border-style: dashed;
+}
+
+.group-header {
+  position: absolute;
+  top: -12px;
+  left: 10px;
+  padding: 0 8px;
+  background-color: #fff;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  z-index: 10;
+}
+
+.dark .group-header {
+  background-color: #1e293b;
+  color: #f8fafc;
+  box-shadow: 0 1px 2px rgba(255,255,255,0.1);
+}
+
+.potential-group-target {
+  box-shadow: 0 0 0 2px theme('colors.primary.DEFAULT');
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
 }
