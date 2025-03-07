@@ -30,8 +30,9 @@ import GroupNode from './nodes/GroupNode';
 import ConfigurableEdge from './edges/ConfigurableEdge';
 import { Equipment, FlowEdge, PathStep } from '@/types/equipment';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { ArrowRightCircle } from 'lucide-react';
+import { ArrowRightCircle, FolderPlus } from 'lucide-react';
 import LiveStatsPanel from './LiveStatsPanel';
+import { Button } from '@/components/ui/button';
 
 const MIN_DISTANCE = 60;
 const GROUP_THRESHOLD = 30;
@@ -752,6 +753,76 @@ const FactoryEditorContent = ({
     return getNodes().some(n => n.parentId && n.id === nodeId);
   }, [getNodes]);
   
+  const createEmptyGroup = useCallback(() => {
+    if (!reactFlowInstance || !reactFlowWrapper.current) {
+      return;
+    }
+    
+    const { x, y, zoom } = reactFlowInstance.getViewport();
+    const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
+    
+    const position = reactFlowInstance.screenToFlowPosition({
+      x: reactFlowBounds.width / 2,
+      y: reactFlowBounds.height / 2,
+    });
+    
+    const defaultWidth = 400;
+    const defaultHeight = 300;
+    
+    const groupNode: Node = {
+      id: `group-${Date.now()}`,
+      type: 'group',
+      position,
+      style: { 
+        width: defaultWidth, 
+        height: defaultHeight
+      },
+      data: { 
+        label: 'New Group',
+        nodes: []
+      },
+    };
+    
+    setNodes(nds => [...nds, groupNode]);
+    
+    toast({
+      title: "Group Created",
+      description: "Empty group created. Drag nodes inside to group them."
+    });
+  }, [reactFlowInstance, setNodes]);
+  
+  const checkNodeOverGroup = useCallback((node: Node, dragEvent: React.MouseEvent | MouseEvent) => {
+    const groups = getNodes().filter(n => n.type === 'group' && n.id !== node.id);
+    
+    if (groups.length === 0 || node.type === 'group') return;
+    
+    const nodeCenter = {
+      x: node.position.x + (NODE_WIDTH / 2),
+      y: node.position.y + (NODE_HEIGHT / 2)
+    };
+    
+    let targetGroup: Node | null = null;
+    
+    groups.forEach(group => {
+      if (
+        nodeCenter.x > group.position.x && 
+        nodeCenter.x < group.position.x + (group.style?.width as number || 0) &&
+        nodeCenter.y > group.position.y && 
+        nodeCenter.y < group.position.y + (group.style?.height as number || 0)
+      ) {
+        targetGroup = group;
+      }
+    });
+    
+    if (targetGroup && !node.parentId) {
+      setPotentialGroupTarget(targetGroup.id);
+    } else {
+      setPotentialGroupTarget(null);
+    }
+    
+    return targetGroup;
+  }, [getNodes]);
+  
   const onNodeDrag: NodeDragHandler = useCallback((event, node) => {
     if (isSimulating) return;
     
@@ -778,33 +849,37 @@ const FactoryEditorContent = ({
     if (node.parentId) {
       checkGroupMembership(node);
     } else {
-      const overlappingNodes = findOverlappingNodes(node);
+      const targetGroup = checkNodeOverGroup(node, event);
       
-      if (overlappingNodes.length > 0) {
-        setNodes(nodes => 
-          nodes.map(n => {
-            if (overlappingNodes.some(on => on.id === n.id) || n.id === node.id) {
+      if (!targetGroup) {
+        const overlappingNodes = findOverlappingNodes(node);
+        
+        if (overlappingNodes.length > 0) {
+          setNodes(nodes => 
+            nodes.map(n => {
+              if (overlappingNodes.some(on => on.id === n.id) || n.id === node.id) {
+                return {
+                  ...n,
+                  className: 'potential-group-target'
+                };
+              }
               return {
                 ...n,
-                className: 'potential-group-target'
+                className: n.className?.replace('potential-group-target', '') || ''
               };
-            }
-            return {
+            })
+          );
+        } else {
+          setNodes(nodes => 
+            nodes.map(n => ({
               ...n,
               className: n.className?.replace('potential-group-target', '') || ''
-            };
-          })
-        );
-      } else {
-        setNodes(nodes => 
-          nodes.map(n => ({
-            ...n,
-            className: n.className?.replace('potential-group-target', '') || ''
-          }))
-        );
+            }))
+          );
+        }
       }
     }
-  }, [getClosestNode, setEdges, isSimulating, findOverlappingNodes, setNodes, checkGroupMembership]);
+  }, [getClosestNode, setEdges, isSimulating, findOverlappingNodes, setNodes, checkGroupMembership, checkNodeOverGroup]);
   
   const onNodeDragStop: NodeDragHandler = useCallback((event, node) => {
     if (isSimulating) return;
@@ -832,7 +907,40 @@ const FactoryEditorContent = ({
       return nextEdges;
     });
     
-    if (!node.parentId) {
+    const targetGroup = checkNodeOverGroup(node, event);
+    
+    if (targetGroup) {
+      setNodes(nodes => {
+        return nodes.map(n => {
+          if (n.id === node.id) {
+            return {
+              ...n,
+              position: {
+                x: GROUP_PADDING,
+                y: GROUP_PADDING
+              },
+              parentId: targetGroup.id,
+              extent: 'parent' as const,
+              className: ''
+            };
+          } else if (n.id === targetGroup.id) {
+            return {
+              ...n,
+              data: {
+                ...n.data,
+                nodes: [...(n.data.nodes || []), node.id]
+              }
+            };
+          }
+          return n;
+        });
+      });
+      
+      toast({
+        title: "Node Added to Group",
+        description: "Node has been added to the group"
+      });
+    } else if (!node.parentId) {
       const overlappingNodes = findOverlappingNodes(node);
       
       if (overlappingNodes.length > 0) {
@@ -847,8 +955,10 @@ const FactoryEditorContent = ({
         className: n.className?.replace('potential-group-target', '') || ''
       }))
     );
-  }, [getClosestNode, setEdges, isSimulating, findOverlappingNodes, createGroupFromNodes, setNodes]);
-
+    
+    setPotentialGroupTarget(null);
+  }, [getClosestNode, setEdges, isSimulating, findOverlappingNodes, createGroupFromNodes, setNodes, checkNodeOverGroup]);
+  
   const onDrop = useCallback(
     (event: React.DragEvent) => {
       event.preventDefault();
@@ -1034,8 +1144,20 @@ const FactoryEditorContent = ({
 
   return (
     <div className="w-full h-full flex flex-col">
-      <div className="px-4 pt-2">
+      <div className="px-4 pt-2 flex justify-between items-center">
         <LiveStatsPanel nodes={nodes} edges={edges} />
+        <div className="flex gap-2 pr-4">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={createEmptyGroup} 
+            className="gap-1 bg-transparent"
+            disabled={isSimulating}
+          >
+            <FolderPlus size={16} />
+            Create Group
+          </Button>
+        </div>
       </div>
       <div className="flex-1" ref={reactFlowWrapper}>
         <ReactFlow
@@ -1128,3 +1250,4 @@ const FactoryEditor = (props: FactoryEditorProps) => {
 };
 
 export default FactoryEditor;
+

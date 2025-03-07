@@ -209,3 +209,9 @@
     box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
   }
 }
+
+/* Highlight when node is over a group */
+.react-flow__node-group.group-drop-target {
+  border-color: theme('colors.primary.DEFAULT') !important;
+  background-color: rgba(59, 130, 246, 0.1) !important;
+}
