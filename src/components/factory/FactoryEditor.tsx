@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useRef, useEffect } from 'react';
 import ReactFlow, {
   Background,
@@ -22,7 +23,6 @@ import ReactFlow, {
   useStoreApi,
   NodeDragHandler,
   ReactFlowProvider,
-  applyNodeChanges,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { toast } from '@/components/ui/use-toast';
@@ -462,53 +462,9 @@ const FactoryEditorContent = ({
     );
   }, [setEdges]);
 
-  // Customize the node changes to handle group movements correctly
-  const onNodesChange = useCallback((changes: NodeChange[]) => {
-    setNodes((nodes) => {
-      // Process each change
-      const processedChanges = changes.map(change => {
-        // If this is a position change for a group node
-        if (change.type === 'position' && change.dragging) {
-          const nodeId = change.id;
-          const node = nodes.find(n => n.id === nodeId);
-          
-          // If this is a group node being dragged, no special handling needed here
-          // The children will be updated in the next step
-          return change;
-        }
-        return change;
-      });
-      
-      // Apply the processed changes first
-      const updatedNodes = applyNodeChanges(processedChanges, nodes);
-      
-      // Now find any group nodes that are being dragged and update their children
-      const draggedGroupChanges = changes.filter(
-        change => change.type === 'position' && change.dragging
-      );
-      
-      let finalNodes = [...updatedNodes];
-      
-      // For each dragged group, update the positions of its children
-      draggedGroupChanges.forEach(change => {
-        const groupId = change.id;
-        const groupNode = updatedNodes.find(n => n.id === groupId);
-        
-        if (groupNode && groupNode.type === 'group') {
-          // Find all child nodes of this group
-          const childNodes = updatedNodes.filter(n => n.parentId === groupId);
-          
-          // If this group has children, update their positions relative to the group
-          if (childNodes.length > 0) {
-            // No need to update child positions since they automatically move with the parent
-            // due to the parentId and extent properties
-          }
-        }
-      });
-      
-      return finalNodes;
-    });
-  }, [setNodes]);
+  const onNodeChanges = useCallback((changes: NodeChange[]) => {
+    onNodesChange(changes);
+  }, [onNodesChange]);
 
   const onEdgeChanges = useCallback((changes: EdgeChange[]) => {
     onEdgesChange(changes);
@@ -633,12 +589,11 @@ const FactoryEditorContent = ({
       setNodes(nodes => {
         return nodes.map(n => {
           if (n.id === node.id) {
-            // When adding a node to a group, set its position relative to the group
             return {
               ...n,
               position: {
-                x: node.position.x - targetGroup.position.x,
-                y: node.position.y - targetGroup.position.y
+                x: GROUP_PADDING,
+                y: GROUP_PADDING
               },
               parentId: targetGroup.id,
               extent: 'parent' as const,
