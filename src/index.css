@@ -215,3 +215,29 @@
   border-color: theme('colors.primary.DEFAULT') !important;
   background-color: rgba(59, 130, 246, 0.1) !important;
 }
+
+/* Custom create sub-flow button */
+.sub-flow-button {
+  position: absolute;
+  bottom: 20px;
+  left: 90px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  background-color: white;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+}
+
+.dark .sub-flow-button {
+  background-color: #1e293b;
+  color: #f8fafc;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.sub-flow-button svg {
+  margin-right: 4px;
+}

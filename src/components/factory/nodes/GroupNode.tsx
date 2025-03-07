@@ -14,7 +14,7 @@ type GroupNodeData = {
 
 const GroupNode = ({ id, data, selected }: NodeProps<GroupNodeData>) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [label, setLabel] = useState(data.label || "Equipment Group");
+  const [label, setLabel] = useState(data.label || "Sub-Flow");
   const { setNodes, deleteElements } = useReactFlow();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -139,7 +139,7 @@ const GroupNode = ({ id, data, selected }: NodeProps<GroupNodeData>) => {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Delete Group</p>
+                  <p>Delete Sub-Flow</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
