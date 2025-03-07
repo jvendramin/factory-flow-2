@@ -67,7 +67,7 @@ const GroupNode = ({ id, data, selected }: NodeProps<GroupNodeData>) => {
       // First, update all child nodes to remove parentId
       const updatedNodes = nodes.map(node => {
         if (node.parentId === id) {
-          // Adjust position to be relative to the parent's position
+          // Adjust position to be absolute instead of relative to the parent
           const parentNode = nodes.find(n => n.id === id);
           return {
             ...node,
