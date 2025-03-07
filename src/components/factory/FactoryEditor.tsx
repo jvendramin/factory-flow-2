@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import ReactFlow, {
   Background,
@@ -36,6 +35,11 @@ import LiveStatsPanel from './LiveStatsPanel';
 
 const MIN_DISTANCE = 60;
 const GROUP_THRESHOLD = 30;
+const NODE_WIDTH = 240;
+const NODE_HEIGHT = 180;
+const GROUP_PADDING = 10;
+const NODE_VERTICAL_SPACING = 20;
+const OVERLAP_THRESHOLD = 0.3; // 30% overlap threshold
 
 const nodeTypes: NodeTypes = {
   equipment: EquipmentNode,
@@ -169,10 +173,8 @@ const FactoryEditorContent = ({
     });
     
     const connectedNodes = new Set<string>();
-    // Group parent-child relationship map
     const groupChildrenMap = new Map<string, string[]>();
     
-    // Build the group-children map
     nodes.forEach(node => {
       if (node.parentId) {
         const children = groupChildrenMap.get(node.parentId) || [];
@@ -185,7 +187,6 @@ const FactoryEditorContent = ({
       if (connectedNodes.has(nodeId)) return;
       connectedNodes.add(nodeId);
       
-      // Add all children of a group node to connected nodes
       if (groupChildrenMap.has(nodeId)) {
         groupChildrenMap.get(nodeId)?.forEach(childId => {
           connectedNodes.add(childId);
@@ -200,7 +201,6 @@ const FactoryEditorContent = ({
     
     const allTargets = new Set(edges.map(e => e.target));
     
-    // Find nodes that have no incoming edges but have outgoing edges
     const startNodeIds = nodes.filter(n => 
       !allTargets.has(n.id) && 
       edgeMap.has(n.id) && 
@@ -352,20 +352,16 @@ const FactoryEditorContent = ({
           
           activeNodeIds.add(path.nodeId);
           
-          // If this is a group node, add all children as active
           if (path.isGroup && path.groupChildren) {
             path.groupChildren.forEach(childId => {
               activeNodeIds.add(childId);
             });
           }
           
-          // Calculate cycle time based on if it's a group or regular node
           let cycleDuration = nodeData.cycleTime || 0;
           let maxCapacity = nodeData.maxCapacity || 1;
           
-          // For group nodes, use the maximum cycle time of all children
           if (path.isGroup && path.groupChildren) {
-            // Process all children concurrently, using the slowest child's cycle time
             let maxChildCycleTime = 0;
             path.groupChildren.forEach(childId => {
               const childData = nodeDataMap.get(childId);
@@ -386,7 +382,6 @@ const FactoryEditorContent = ({
             const nextNodes = edgeMap.get(path.nodeId) || [];
             
             if (nextNodes.length === 0) {
-              // End of flow
             } else {
               nextNodes.forEach(({ targetId, transitTime }) => {
                 nextActivePaths.push({
@@ -534,42 +529,230 @@ const FactoryEditorContent = ({
     };
   }, [store, getNodes]);
   
-  const isNodeOverlapping = useCallback((draggingNode: Node): string | null => {
-    if (draggingNode.parentId) return null; // Don't check nodes already in a group
+  const calculateOverlap = useCallback((nodeA: Node, nodeB: Node): number => {
+    const aLeft = nodeA.position.x;
+    const aRight = aLeft + NODE_WIDTH;
+    const aTop = nodeA.position.y;
+    const aBottom = aTop + NODE_HEIGHT;
     
-    const flowNodes = getNodes();
-    const currentNode = flowNodes.find(n => n.id === draggingNode.id);
+    const bLeft = nodeB.position.x;
+    const bRight = bLeft + NODE_WIDTH;
+    const bTop = nodeB.position.y;
+    const bBottom = bTop + NODE_HEIGHT;
     
-    if (!currentNode || !currentNode.position) {
-      return null;
+    const overlapLeft = Math.max(aLeft, bLeft);
+    const overlapRight = Math.min(aRight, bRight);
+    const overlapTop = Math.max(aTop, bTop);
+    const overlapBottom = Math.min(aBottom, bBottom);
+    
+    if (overlapLeft < overlapRight && overlapTop < overlapBottom) {
+      const overlapArea = (overlapRight - overlapLeft) * (overlapBottom - overlapTop);
+      const nodeArea = NODE_WIDTH * NODE_HEIGHT;
+      
+      return overlapArea / nodeArea;
     }
-
-    const nodeWidth = 240; 
-    const nodeHeight = 180;
     
-    const currentX = currentNode.position.x;
-    const currentY = currentNode.position.y;
+    return 0;
+  }, []);
+  
+  const findOverlappingNodes = useCallback((node: Node): Node[] => {
+    const flowNodes = getNodes();
+    const overlappingNodes: Node[] = [];
     
-    for (const node of flowNodes) {
-      if (node.id !== draggingNode.id && !node.parentId && node.type !== 'group') {
-        const targetX = node.position.x;
-        const targetY = node.position.y;
+    flowNodes.forEach(n => {
+      if (n.id !== node.id && !n.parentId && n.type !== 'group') {
+        const overlapPercentage = calculateOverlap(node, n);
         
-        const distance = Math.sqrt(
-          Math.pow(targetX - currentX, 2) + 
-          Math.pow(targetY - currentY, 2)
-        );
-        
-        if (distance < GROUP_THRESHOLD) {
-          return node.id;
+        if (overlapPercentage > OVERLAP_THRESHOLD) {
+          overlappingNodes.push(n);
         }
       }
-    }
+    });
     
-    return null;
+    return overlappingNodes;
+  }, [getNodes, calculateOverlap]);
+  
+  const createGroupFromNodes = useCallback((nodeIds: string[]) => {
+    if (nodeIds.length < 2) return;
+    
+    const groupId = `group-${Date.now()}`;
+    const allNodes = getNodes();
+    const nodesToGroup = allNodes.filter(n => nodeIds.includes(n.id));
+    
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    
+    nodesToGroup.forEach(node => {
+      minX = Math.min(minX, node.position.x);
+      minY = Math.min(minY, node.position.y);
+      maxX = Math.max(maxX, node.position.x + NODE_WIDTH);
+      maxY = Math.max(maxY, node.position.y + NODE_HEIGHT);
+    });
+    
+    minX -= GROUP_PADDING;
+    minY -= GROUP_PADDING;
+    maxX += GROUP_PADDING;
+    maxY += GROUP_PADDING;
+    
+    const width = maxX - minX;
+    const height = maxY - minY;
+    
+    const nodesToUpdate = [...nodesToGroup];
+    const verticalSpace = (height - (nodesToGroup.length * NODE_HEIGHT)) / 
+                          Math.max(1, nodesToGroup.length - 1);
+    const spacing = Math.max(NODE_VERTICAL_SPACING, verticalSpace);
+    
+    nodesToUpdate.sort((a, b) => a.position.y - b.position.y);
+    
+    const updatedNodes = allNodes.map(n => {
+      if (nodeIds.includes(n.id)) {
+        const index = nodesToUpdate.findIndex(node => node.id === n.id);
+        return {
+          ...n,
+          position: {
+            x: GROUP_PADDING,
+            y: GROUP_PADDING + (index * (NODE_HEIGHT + spacing))
+          },
+          parentId: groupId,
+          extent: 'parent' as const,
+          className: ''
+        };
+      }
+      return n;
+    });
+    
+    const groupHeight = GROUP_PADDING * 2 + (nodesToUpdate.length * NODE_HEIGHT) + 
+                        ((nodesToUpdate.length - 1) * spacing);
+    
+    const groupNode: Node = {
+      id: groupId,
+      type: 'group',
+      position: { x: minX, y: minY },
+      style: { 
+        width: width, 
+        height: groupHeight
+      },
+      data: { 
+        label: 'Equipment Group',
+        nodes: nodeIds
+      },
+    };
+    
+    setNodes([...updatedNodes, groupNode]);
+    
+    toast({
+      title: "Group Created",
+      description: `${nodeIds.length} equipment items have been grouped together`,
+    });
+  }, [getNodes, setNodes]);
+  
+  const checkGroupMembership = useCallback((node: Node) => {
+    if (!node.parentId) return;
+    
+    const parentNode = getNodes().find(n => n.id === node.parentId);
+    if (!parentNode) return;
+    
+    const parentWidth = parentNode.style?.width as number || 0;
+    const parentHeight = parentNode.style?.height as number || 0;
+    
+    if (node.position.x < -NODE_WIDTH/3 || 
+        node.position.y < -NODE_HEIGHT/3 || 
+        node.position.x > parentWidth - NODE_WIDTH*2/3 || 
+        node.position.y > parentHeight - NODE_HEIGHT*2/3) {
+      
+      setNodes(nodes => {
+        const parentPos = parentNode.position;
+        const absolutePos = {
+          x: parentPos.x + node.position.x,
+          y: parentPos.y + node.position.y
+        };
+        
+        const updatedNodes = nodes.map(n => {
+          if (n.id === node.id) {
+            return {
+              ...n,
+              parentId: undefined,
+              extent: undefined,
+              position: absolutePos
+            };
+          }
+          return n;
+        });
+        
+        const remainingGroupNodes = updatedNodes.filter(n => n.parentId === parentNode.id);
+        
+        if (remainingGroupNodes.length <= 1) {
+          const nodesWithoutGroup = updatedNodes.map(n => {
+            if (n.parentId === parentNode.id) {
+              return {
+                ...n,
+                parentId: undefined,
+                extent: undefined,
+                position: {
+                  x: parentPos.x + n.position.x,
+                  y: parentPos.y + n.position.y
+                }
+              };
+            }
+            return n;
+          });
+          
+          return nodesWithoutGroup.filter(n => n.id !== parentNode.id);
+        } else {
+          let newHeight = GROUP_PADDING * 2;
+          
+          remainingGroupNodes.sort((a, b) => a.position.y - b.position.y);
+          
+          const updateWithNewPositions = updatedNodes.map((n, idx) => {
+            if (n.parentId === parentNode.id) {
+              const groupIndex = remainingGroupNodes.findIndex(gn => gn.id === n.id);
+              return {
+                ...n,
+                position: {
+                  x: GROUP_PADDING,
+                  y: GROUP_PADDING + (groupIndex * (NODE_HEIGHT + NODE_VERTICAL_SPACING))
+                }
+              };
+            }
+            return n;
+          });
+          
+          newHeight += (remainingGroupNodes.length * NODE_HEIGHT) + 
+                        ((remainingGroupNodes.length - 1) * NODE_VERTICAL_SPACING);
+          
+          return updateWithNewPositions.map(n => {
+            if (n.id === parentNode.id) {
+              return {
+                ...n,
+                style: {
+                  ...n.style,
+                  height: newHeight
+                },
+                data: {
+                  ...n.data,
+                  nodes: remainingGroupNodes.map(gn => gn.id)
+                }
+              };
+            }
+            return n;
+          });
+        }
+      });
+      
+      toast({
+        title: "Node Removed from Group",
+        description: "The equipment has been removed from its group"
+      });
+    }
+  }, [getNodes, setNodes]);
+  
+  const isNodeInGroup = useCallback((nodeId: string): boolean => {
+    return getNodes().some(n => n.parentId && n.id === nodeId);
   }, [getNodes]);
   
-  const onNodeDrag: NodeDragHandler = useCallback((_, node) => {
+  const onNodeDrag: NodeDragHandler = useCallback((event, node) => {
     if (isSimulating) return;
     
     const closeEdge = getClosestNode(node);
@@ -592,84 +775,38 @@ const FactoryEditorContent = ({
       return nextEdges;
     });
     
-    const overlappingNodeId = isNodeOverlapping(node);
-    setPotentialGroupTarget(overlappingNodeId);
-    
-    if (overlappingNodeId) {
-      setNodes(nodes => 
-        nodes.map(n => {
-          if (n.id === overlappingNodeId) {
+    if (node.parentId) {
+      checkGroupMembership(node);
+    } else {
+      const overlappingNodes = findOverlappingNodes(node);
+      
+      if (overlappingNodes.length > 0) {
+        setNodes(nodes => 
+          nodes.map(n => {
+            if (overlappingNodes.some(on => on.id === n.id) || n.id === node.id) {
+              return {
+                ...n,
+                className: 'potential-group-target'
+              };
+            }
             return {
               ...n,
-              className: 'potential-group-target'
+              className: n.className?.replace('potential-group-target', '') || ''
             };
-          }
-          return {
+          })
+        );
+      } else {
+        setNodes(nodes => 
+          nodes.map(n => ({
             ...n,
             className: n.className?.replace('potential-group-target', '') || ''
-          };
-        })
-      );
-    } else {
-      setNodes(nodes => 
-        nodes.map(n => ({
-          ...n,
-          className: n.className?.replace('potential-group-target', '') || ''
-        }))
-      );
-    }
-  }, [getClosestNode, setEdges, isSimulating, isNodeOverlapping, setNodes]);
-  
-  const createGroup = useCallback((nodeId: string, targetId: string) => {
-    const nodeA = nodes.find(n => n.id === nodeId);
-    const nodeB = nodes.find(n => n.id === targetId);
-    
-    if (!nodeA || !nodeB) return;
-    
-    const groupId = `group-${Date.now()}`;
-    
-    // Calculate the group dimensions to properly contain the nodes
-    const left = Math.min(nodeA.position.x, nodeB.position.x) - 40;
-    const top = Math.min(nodeA.position.y, nodeB.position.y) - 40;
-    const right = Math.max(nodeA.position.x + 240, nodeB.position.x + 240) + 40;
-    const bottom = Math.max(nodeA.position.y + 180, nodeB.position.y + 180) + 40;
-    
-    const width = right - left;
-    const height = bottom - top;
-    
-    const groupNode: Node = {
-      id: groupId,
-      type: 'group',
-      position: { x: left, y: top },
-      style: { width, height },
-      data: { label: 'Equipment Group' },
-    };
-    
-    const updatedNodes = nodes.map(n => {
-      if (n.id === nodeId || n.id === targetId) {
-        return {
-          ...n,
-          position: {
-            x: n.position.x - left,
-            y: n.position.y - top
-          },
-          parentId: groupId,
-          extent: 'parent' as const,
-          className: ''
-        };
+          }))
+        );
       }
-      return n;
-    });
-    
-    setNodes([...updatedNodes, groupNode]);
-    
-    toast({
-      title: "Group Created",
-      description: "Equipment has been grouped together",
-    });
-  }, [nodes, setNodes]);
+    }
+  }, [getClosestNode, setEdges, isSimulating, findOverlappingNodes, setNodes, checkGroupMembership]);
   
-  const onNodeDragStop: NodeDragHandler = useCallback((_, node) => {
+  const onNodeDragStop: NodeDragHandler = useCallback((event, node) => {
     if (isSimulating) return;
     
     const closeEdge = getClosestNode(node);
@@ -695,9 +832,13 @@ const FactoryEditorContent = ({
       return nextEdges;
     });
     
-    if (potentialGroupTarget) {
-      createGroup(node.id, potentialGroupTarget);
-      setPotentialGroupTarget(null);
+    if (!node.parentId) {
+      const overlappingNodes = findOverlappingNodes(node);
+      
+      if (overlappingNodes.length > 0) {
+        const nodeIds = [node.id, ...overlappingNodes.map(n => n.id)];
+        createGroupFromNodes(nodeIds);
+      }
     }
     
     setNodes(nodes => 
@@ -706,7 +847,7 @@ const FactoryEditorContent = ({
         className: n.className?.replace('potential-group-target', '') || ''
       }))
     );
-  }, [getClosestNode, setEdges, isSimulating, potentialGroupTarget, createGroup, setNodes]);
+  }, [getClosestNode, setEdges, isSimulating, findOverlappingNodes, createGroupFromNodes, setNodes]);
 
   const onDrop = useCallback(
     (event: React.DragEvent) => {
@@ -807,7 +948,7 @@ const FactoryEditorContent = ({
     }
   }, [placeholderNode, setNodes]);
   
-  const findBestNodePosition = useCallback((): XYPosition => {
+  const findBestNodePosition = useCallback(() => {
     let maxX = 0;
     let avgY = 0;
     

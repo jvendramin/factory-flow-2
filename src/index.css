@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -35,6 +36,9 @@
     --radius: 0.5rem;
 
     --sidebar: 0 0% 100%;
+
+    --group-background: 226 32% 91% 0.4;
+    --group-border: 226 32% 91% 0.7;
   }
  
   .dark {
@@ -67,6 +71,9 @@
     --ring: hsl(212.7, 26.8%, 83.9);
 
     --sidebar: 223 47% 11%;
+
+    --group-background: 215 25% 27% 0.4;
+    --group-border: 215 25% 27% 0.7;
   }
 }
  
@@ -98,35 +105,50 @@
 }
 
 .react-flow__node-group {
-  background-color: rgba(241, 245, 249, 0.8);
-  border: 1px dashed #94a3b8;
-  border-radius: 6px;
+  background-color: rgba(var(--group-background)) !important;
+  border: 2px solid rgba(var(--group-border)) !important;
+  border-radius: 8px;
   padding: 10px;
+  pointer-events: all;
+  position: relative;
 }
 
-.dark .react-flow__node-group {
-  background-color: rgba(30, 41, 59, 0.8);
-  border: 1px dashed #475569;
+.react-flow__node-group .group-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
 }
 
-.react-flow__node-group .group-label {
+.react-flow__node-group .group-header-card {
   position: absolute;
-  top: -8px;
+  top: -20px;
   left: 10px;
-  padding: 0 5px;
-  font-size: 12px;
+  padding: 4px 10px;
   background-color: #fff;
-  border-radius: 3px;
+  border-radius: 4px;
+  font-size: 12px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
-.dark .react-flow__node-group .group-label {
+.dark .react-flow__node-group .group-header-card {
   background-color: #1e293b;
   color: #f8fafc;
+  box-shadow: 0 1px 2px rgba(255,255,255,0.05);
+}
+
+.react-flow__node-group .react-flow__handle {
+  background-color: #555;
+  width: 8px;
+  height: 8px;
+  border: 1px solid #fff;
 }
 
 .react-flow__node.react-flow__node-group {
-  background-color: rgba(241, 245, 249, 0.7);
-  border: 1px dashed #94a3b8;
+  background-color: rgba(var(--group-background)) !important;
+  border: 2px solid rgba(var(--group-border)) !important;
   border-radius: 8px;
   padding: 12px;
   padding-top: 24px;
@@ -135,24 +157,13 @@
   transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
-.dark .react-flow__node.react-flow__node-group {
-  background-color: rgba(30, 41, 59, 0.7);
-  border: 1px dashed #475569;
-}
-
 .react-flow__node.react-flow__node-group:hover {
-  background-color: rgba(241, 245, 249, 0.9);
-  border-color: #64748b;
-}
-
-.dark .react-flow__node.react-flow__node-group:hover {
-  background-color: rgba(30, 41, 59, 0.9);
-  border-color: #64748b;
+  border-color: rgba(100, 116, 139, 0.9) !important;
 }
 
 .react-flow__node.react-flow__node-group.selected {
-  border-color: var(--primary);
-  border-style: dashed;
+  border-color: var(--primary) !important;
+  border-width: 2px;
 }
 
 .group-header {

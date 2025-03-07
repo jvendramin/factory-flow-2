@@ -19,6 +19,8 @@ export interface Equipment {
   bottleneck?: boolean; // whether this equipment is a bottleneck
   utilization?: number; // percentage of utilization
   placeholder?: boolean; // whether this is a placeholder node
+  groupId?: string; // unique identifier for group membership
+  groupPosition?: number; // position within group for vertical alignment
 }
 
 export interface FlowEdge {
@@ -37,4 +39,16 @@ export interface FlowEdge {
 export interface PathStep {
   nodeId: string;
   transitTime?: number;
+}
+
+export interface GroupData {
+  id: string;
+  label: string;
+  nodes: string[]; // IDs of nodes in this group
+  bounds: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
 }

@@ -2,17 +2,20 @@
 import { useCallback, useState, useRef, useEffect } from "react";
 import { Handle, Position, NodeProps, useReactFlow } from "reactflow";
 import { Input } from "@/components/ui/input";
-import { Edit2, Check } from "lucide-react";
+import { Edit2, Check, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type GroupNodeData = {
   label: string;
+  nodes: string[];
 };
 
 const GroupNode = ({ id, data, selected }: NodeProps<GroupNodeData>) => {
   const [isEditing, setIsEditing] = useState(false);
   const [label, setLabel] = useState(data.label || "Equipment Group");
-  const { setNodes } = useReactFlow();
+  const { setNodes, deleteElements } = useReactFlow();
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Focus the input when editing starts
@@ -54,6 +57,36 @@ const GroupNode = ({ id, data, selected }: NodeProps<GroupNodeData>) => {
     }
   }, [handleSaveClick]);
 
+  const handleDelete = useCallback((event: React.MouseEvent) => {
+    event.stopPropagation();
+    
+    // Release all child nodes from the group
+    setNodes((nodes) => {
+      const childNodes = nodes.filter(n => n.parentId === id);
+      
+      // First, update all child nodes to remove parentId
+      const updatedNodes = nodes.map(node => {
+        if (node.parentId === id) {
+          // Adjust position to be relative to the parent's position
+          const parentNode = nodes.find(n => n.id === id);
+          return {
+            ...node,
+            parentId: undefined,
+            extent: undefined,
+            position: {
+              x: (parentNode?.position.x || 0) + node.position.x,
+              y: (parentNode?.position.y || 0) + node.position.y
+            }
+          };
+        }
+        return node;
+      });
+      
+      // Then filter out the group node itself
+      return updatedNodes.filter(node => node.id !== id);
+    });
+  }, [id, setNodes]);
+
   // Define handle styles
   const handleStyle = {
     background: "#555",
@@ -63,8 +96,8 @@ const GroupNode = ({ id, data, selected }: NodeProps<GroupNodeData>) => {
   };
 
   return (
-    <>
-      <div className="group-header">
+    <div className="group-container">
+      <Card className="group-header-card">
         {isEditing ? (
           <div className="flex items-center">
             <Input
@@ -79,21 +112,40 @@ const GroupNode = ({ id, data, selected }: NodeProps<GroupNodeData>) => {
               onClick={handleSaveClick}
               className="ml-1 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
             >
-              <Check size={12} />
+              <Check size={14} />
             </button>
           </div>
         ) : (
-          <div className="flex items-center">
-            <span className="text-xs font-medium">{label}</span>
-            <button 
-              onClick={handleEditClick}
-              className="ml-1 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
-            >
-              <Edit2 size={12} />
-            </button>
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center">
+              <span className="text-xs font-medium">{label}</span>
+              <button 
+                onClick={handleEditClick}
+                className="ml-1 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <Edit2 size={14} />
+              </button>
+            </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-6 w-6 ml-2" 
+                    onClick={handleDelete}
+                  >
+                    <Trash2 className="h-3 w-3 text-muted-foreground" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Delete Group</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         )}
-      </div>
+      </Card>
       
       {/* Handles on all sides to allow connections to the group */}
       <Handle type="target" position={Position.Top} style={handleStyle} id="group-target-top" />
@@ -107,7 +159,7 @@ const GroupNode = ({ id, data, selected }: NodeProps<GroupNodeData>) => {
       
       <Handle type="target" position={Position.Left} style={handleStyle} id="group-target-left" />
       <Handle type="source" position={Position.Left} style={handleStyle} id="group-source-left" />
-    </>
+    </div>
   );
 };
 
