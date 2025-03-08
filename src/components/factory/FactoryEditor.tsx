@@ -14,8 +14,6 @@ import ReactFlow, {
   XYPosition,
   useReactFlow,
   ReactFlowInstance,
-  NodeChange,
-  EdgeChange,
   ConnectionMode,
   EdgeTypes,
   ConnectionLineType,
@@ -462,11 +460,35 @@ const FactoryEditorContent = ({
     );
   }, [setEdges]);
 
-  const onNodeChanges = useCallback((changes: NodeChange[]) => {
+  // Handle node changes
+  const handleNodesChange = useCallback((changes) => {
     onNodesChange(changes);
-  }, [onNodesChange]);
+    
+    // Process parent-child relationships for drag operations
+    changes.forEach(change => {
+      if (change.type === 'position' && change.dragging && change.id) {
+        const draggedNode = nodes.find(node => node.id === change.id);
+        if (draggedNode && draggedNode.type === 'group') {
+          // Move all children with the parent group
+          setNodes(currentNodes => 
+            currentNodes.map(node => {
+              if (node.parentNode === change.id) {
+                return {
+                  ...node,
+                  position: {
+                    ...node.position
+                  }
+                };
+              }
+              return node;
+            })
+          );
+        }
+      }
+    });
+  }, [nodes, onNodesChange, setNodes]);
 
-  const onEdgeChanges = useCallback((changes: EdgeChange[]) => {
+  const onEdgeChanges = useCallback((changes) => {
     onEdgesChange(changes);
   }, [onEdgesChange]);
 
@@ -481,35 +503,32 @@ const FactoryEditorContent = ({
   }, []);
   
   const checkNodeOverGroup = useCallback((node: Node, dragEvent: React.MouseEvent | MouseEvent) => {
-    const groups = getNodes().filter(n => n.type === 'group' && n.id !== node.id);
+    if (node.type === 'group') return null; // Groups can't be nested in groups
     
-    if (groups.length === 0 || node.type === 'group') return;
+    const groups = getNodes().filter(n => n.type === 'group' && n.id !== node.id);
+    if (groups.length === 0) return null;
     
     const nodeCenter = {
       x: node.position.x + (NODE_WIDTH / 2),
       y: node.position.y + (NODE_HEIGHT / 2)
     };
     
-    let targetGroup: Node | null = null;
-    
-    groups.forEach(group => {
+    for (const group of groups) {
+      // Use width and height from style
+      const groupWidth = group.style?.width as number || 300;
+      const groupHeight = group.style?.height as number || 200;
+      
       if (
         nodeCenter.x > group.position.x && 
-        nodeCenter.x < group.position.x + (group.style?.width as number || 0) &&
+        nodeCenter.x < group.position.x + groupWidth &&
         nodeCenter.y > group.position.y && 
-        nodeCenter.y < group.position.y + (group.style?.height as number || 0)
+        nodeCenter.y < group.position.y + groupHeight
       ) {
-        targetGroup = group;
+        return group;
       }
-    });
-    
-    if (targetGroup && !node.parentId) {
-      setPotentialGroupTarget(targetGroup.id);
-    } else {
-      setPotentialGroupTarget(null);
     }
     
-    return targetGroup;
+    return null;
   }, [getNodes]);
   
   const createEmptyGroup = useCallback(() => {
@@ -554,7 +573,7 @@ const FactoryEditorContent = ({
     if (isSimulating) return;
     
     // Check if node is being dragged over a group
-    if (!node.parentId) {
+    if (!node.parentNode) {
       const targetGroup = checkNodeOverGroup(node, event);
       
       if (targetGroup) {
@@ -583,43 +602,49 @@ const FactoryEditorContent = ({
   const onNodeDragStop: NodeDragHandler = useCallback((event, node) => {
     if (isSimulating) return;
     
-    const targetGroup = checkNodeOverGroup(node, event);
-    
-    if (targetGroup) {
-      setNodes(nodes => {
-        return nodes.map(n => {
-          if (n.id === node.id) {
+    // Check if a node is being dragged onto a group
+    if (!node.parentNode) {
+      const targetGroup = checkNodeOverGroup(node, event);
+      
+      if (targetGroup) {
+        // Calculate relative position within the group
+        const relativePosition = {
+          x: node.position.x - targetGroup.position.x,
+          y: node.position.y - targetGroup.position.y
+        };
+        
+        setNodes(nodes => {
+          return nodes.map(n => {
+            if (n.id === node.id) {
+              return {
+                ...n,
+                position: relativePosition,
+                parentNode: targetGroup.id,
+                extent: 'parent',
+                className: ''
+              };
+            } else if (n.id === targetGroup.id) {
+              return {
+                ...n,
+                data: {
+                  ...n.data,
+                  nodes: [...(n.data.nodes || []), node.id]
+                },
+                className: n.className?.replace('group-drop-target', '') || ''
+              };
+            }
             return {
               ...n,
-              position: {
-                x: GROUP_PADDING,
-                y: GROUP_PADDING
-              },
-              parentId: targetGroup.id,
-              extent: 'parent' as const,
-              className: ''
-            };
-          } else if (n.id === targetGroup.id) {
-            return {
-              ...n,
-              data: {
-                ...n.data,
-                nodes: [...(n.data.nodes || []), node.id]
-              },
               className: n.className?.replace('group-drop-target', '') || ''
             };
-          }
-          return {
-            ...n,
-            className: n.className?.replace('group-drop-target', '') || ''
-          };
+          });
         });
-      });
-      
-      toast({
-        title: "Node Added to Sub-Flow",
-        description: "Node has been added to the sub-flow"
-      });
+        
+        toast({
+          title: "Node Added to Sub-Flow",
+          description: "Node has been added to the sub-flow"
+        });
+      }
     }
     
     setPotentialGroupTarget(null);
@@ -646,10 +671,41 @@ const FactoryEditorContent = ({
         y: event.clientY - reactFlowBounds.top,
       });
 
+      // Check if position is over a group
+      const nodesAtDrop = getNodes().filter(n => {
+        if (n.type !== 'group') return false;
+        
+        const groupWidth = n.style?.width as number || 300;
+        const groupHeight = n.style?.height as number || 200;
+        
+        return (
+          position.x > n.position.x && 
+          position.x < n.position.x + groupWidth &&
+          position.y > n.position.y && 
+          position.y < n.position.y + groupHeight
+        );
+      });
+      
+      const parentGroup = nodesAtDrop.length > 0 ? nodesAtDrop[0] : null;
+      
+      let newNodePosition = position;
+      let parentNodeId = undefined;
+      
+      // If dropped over a group, adjust position to be relative to the group
+      if (parentGroup) {
+        newNodePosition = {
+          x: position.x - parentGroup.position.x,
+          y: position.y - parentGroup.position.y
+        };
+        parentNodeId = parentGroup.id;
+      }
+
       const newNode = {
         id: `equipment-${Date.now()}`,
         type: 'equipment',
-        position,
+        position: newNodePosition,
+        parentNode: parentNodeId,
+        extent: parentNodeId ? 'parent' : undefined,
         data: { 
           ...equipmentData,
           maxCapacity: equipmentData.maxCapacity || 1 
@@ -657,12 +713,31 @@ const FactoryEditorContent = ({
       };
 
       setNodes((nds) => nds.concat(newNode));
+      
+      // If added to group, update group data
+      if (parentGroup) {
+        setNodes(nds => 
+          nds.map(n => {
+            if (n.id === parentGroup.id) {
+              return {
+                ...n,
+                data: {
+                  ...n.data,
+                  nodes: [...(n.data.nodes || []), newNode.id]
+                }
+              };
+            }
+            return n;
+          })
+        );
+      }
+
       toast({
         title: `Added ${equipmentData.name}`,
         description: `${equipmentData.name} has been added to the factory floor`,
       });
     },
-    [reactFlowInstance, setNodes]
+    [reactFlowInstance, setNodes, getNodes]
   );
 
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -817,7 +892,7 @@ const FactoryEditorContent = ({
         <ReactFlow
           nodes={nodes}
           edges={edges}
-          onNodesChange={onNodeChanges}
+          onNodesChange={handleNodesChange}
           onEdgesChange={onEdgeChanges}
           onNodesDelete={onNodesDelete}
           onConnect={onConnect}

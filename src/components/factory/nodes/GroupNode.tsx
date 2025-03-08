@@ -1,6 +1,6 @@
 
 import { useCallback, useState, useRef, useEffect } from "react";
-import { Handle, Position, NodeProps, useReactFlow } from "reactflow";
+import { Handle, Position, NodeProps, useReactFlow, NodeResizer } from "reactflow";
 import { Input } from "@/components/ui/input";
 import { Edit2, Check, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -62,16 +62,16 @@ const GroupNode = ({ id, data, selected }: NodeProps<GroupNodeData>) => {
     
     // Release all child nodes from the group
     setNodes((nodes) => {
-      const childNodes = nodes.filter(n => n.parentId === id);
+      const childNodes = nodes.filter(n => n.parentNode === id);
       
-      // First, update all child nodes to remove parentId
+      // First, update all child nodes to remove parentNode
       const updatedNodes = nodes.map(node => {
-        if (node.parentId === id) {
-          // Adjust position to be relative to the parent's position
+        if (node.parentNode === id) {
+          // Adjust position to be absolute
           const parentNode = nodes.find(n => n.id === id);
           return {
             ...node,
-            parentId: undefined,
+            parentNode: undefined,
             extent: undefined,
             position: {
               x: (parentNode?.position.x || 0) + node.position.x,
@@ -97,6 +97,14 @@ const GroupNode = ({ id, data, selected }: NodeProps<GroupNodeData>) => {
 
   return (
     <div className="group-container">
+      <NodeResizer
+        minWidth={300}
+        minHeight={200}
+        isVisible={selected}
+        lineClassName="border-blue-400"
+        handleClassName="h-3 w-3 bg-white border border-blue-400"
+      />
+      
       <Card className="group-header-card">
         {isEditing ? (
           <div className="flex items-center">
