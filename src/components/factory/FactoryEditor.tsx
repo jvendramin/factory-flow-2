@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import ReactFlow, {
   Background,
@@ -460,16 +459,13 @@ const FactoryEditorContent = ({
     );
   }, [setEdges]);
 
-  // Handle node changes
   const handleNodesChange = useCallback((changes) => {
     onNodesChange(changes);
     
-    // Process parent-child relationships for drag operations
     changes.forEach(change => {
       if (change.type === 'position' && change.dragging && change.id) {
         const draggedNode = nodes.find(node => node.id === change.id);
         if (draggedNode && draggedNode.type === 'group') {
-          // Move all children with the parent group
           setNodes(currentNodes => 
             currentNodes.map(node => {
               if (node.parentNode === change.id) {
@@ -503,7 +499,7 @@ const FactoryEditorContent = ({
   }, []);
   
   const checkNodeOverGroup = useCallback((node: Node, dragEvent: React.MouseEvent | MouseEvent) => {
-    if (node.type === 'group') return null; // Groups can't be nested in groups
+    if (node.type === 'group') return null;
     
     const groups = getNodes().filter(n => n.type === 'group' && n.id !== node.id);
     if (groups.length === 0) return null;
@@ -514,7 +510,6 @@ const FactoryEditorContent = ({
     };
     
     for (const group of groups) {
-      // Use width and height from style
       const groupWidth = group.style?.width as number || 300;
       const groupHeight = group.style?.height as number || 200;
       
@@ -572,7 +567,6 @@ const FactoryEditorContent = ({
   const onNodeDrag: NodeDragHandler = useCallback((event, node) => {
     if (isSimulating) return;
     
-    // Check if node is being dragged over a group
     if (!node.parentNode) {
       const targetGroup = checkNodeOverGroup(node, event);
       
@@ -602,12 +596,10 @@ const FactoryEditorContent = ({
   const onNodeDragStop: NodeDragHandler = useCallback((event, node) => {
     if (isSimulating) return;
     
-    // Check if a node is being dragged onto a group
     if (!node.parentNode) {
       const targetGroup = checkNodeOverGroup(node, event);
       
       if (targetGroup) {
-        // Calculate relative position within the group
         const relativePosition = {
           x: node.position.x - targetGroup.position.x,
           y: node.position.y - targetGroup.position.y
@@ -671,7 +663,6 @@ const FactoryEditorContent = ({
         y: event.clientY - reactFlowBounds.top,
       });
 
-      // Check if position is over a group
       const nodesAtDrop = getNodes().filter(n => {
         if (n.type !== 'group') return false;
         
@@ -691,7 +682,6 @@ const FactoryEditorContent = ({
       let newNodePosition = position;
       let parentNodeId = undefined;
       
-      // If dropped over a group, adjust position to be relative to the group
       if (parentGroup) {
         newNodePosition = {
           x: position.x - parentGroup.position.x,
@@ -705,7 +695,7 @@ const FactoryEditorContent = ({
         type: 'equipment',
         position: newNodePosition,
         parentNode: parentNodeId,
-        extent: parentNodeId ? 'parent' : undefined,
+        extent: parentNodeId ? 'parent' as const : undefined,
         data: { 
           ...equipmentData,
           maxCapacity: equipmentData.maxCapacity || 1 
@@ -714,7 +704,6 @@ const FactoryEditorContent = ({
 
       setNodes((nds) => nds.concat(newNode));
       
-      // If added to group, update group data
       if (parentGroup) {
         setNodes(nds => 
           nds.map(n => {
@@ -935,7 +924,6 @@ const FactoryEditorContent = ({
             }}
           />
           
-          {/* Custom Sub-Flow create button */}
           <div 
             className="sub-flow-button"
             onClick={createEmptyGroup}
