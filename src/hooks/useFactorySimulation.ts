@@ -19,7 +19,6 @@ export const useFactorySimulation = ({
   const [currentUnitPosition, setCurrentUnitPosition] = useState<{ nodeId: string, progress: number } | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastTimestamp = useRef<number>(0);
-  const activeEdgeRef = useRef<string | null>(null);
   const { getNodes, getEdges, setNodes, setEdges } = useReactFlow();
 
   // Cleanup animation frame on unmount
@@ -89,25 +88,10 @@ export const useFactorySimulation = ({
     });
     
     const connectedNodes = new Set<string>();
-    const groupChildrenMap = new Map<string, string[]>();
-    
-    nodes.forEach(node => {
-      if (node.parentNode) {
-        const children = groupChildrenMap.get(node.parentNode) || [];
-        children.push(node.id);
-        groupChildrenMap.set(node.parentNode, children);
-      }
-    });
     
     const findConnectedNodes = (nodeId: string) => {
       if (connectedNodes.has(nodeId)) return;
       connectedNodes.add(nodeId);
-      
-      if (groupChildrenMap.has(nodeId)) {
-        groupChildrenMap.get(nodeId)?.forEach(childId => {
-          connectedNodes.add(childId);
-        });
-      }
       
       const outgoingEdges = edgeMap.get(nodeId) || [];
       outgoingEdges.forEach(edge => {
@@ -142,18 +126,14 @@ export const useFactorySimulation = ({
       inTransit: boolean,
       transitTo: string,
       transitTime: number,
-      transitProgress: number,
-      isGroup?: boolean,
-      groupChildren?: string[]
+      transitProgress: number
     }[] = startNodeIds.map(id => ({ 
       nodeId: id, 
       progress: 0, 
       inTransit: false,
       transitTo: '', 
       transitTime: 0,
-      transitProgress: 0,
-      isGroup: nodes.find(n => n.id === id)?.type === 'group',
-      groupChildren: groupChildrenMap.get(id)
+      transitProgress: 0
     }));
     
     const nodeDataMap = new Map(nodes.map(n => [n.id, n.data]));
@@ -268,34 +248,12 @@ export const useFactorySimulation = ({
           
           activeNodeIds.add(path.nodeId);
           
-          if (path.isGroup && path.groupChildren) {
-            // For groups, process all children concurrently
-            path.groupChildren.forEach(childId => {
-              activeNodeIds.add(childId);
-            });
-            
-            // Use the fastest cycle time for the group (concurrent processing)
-            let minCycleTime = Infinity;
-            path.groupChildren.forEach(childId => {
-              const childData = nodeDataMap.get(childId);
-              if (childData) {
-                const childCycleTime = (childData.cycleTime || 0) / (childData.maxCapacity || 1);
-                minCycleTime = Math.min(minCycleTime, childCycleTime);
-              }
-            });
-            
-            // If there are no valid cycle times, default to a reasonable value
-            const cycleDuration = minCycleTime === Infinity ? 1 : minCycleTime;
-            
-            path.progress += delta * simulationSpeed / cycleDuration;
-          } else {
-            // Normal node processing
-            let cycleDuration = nodeData.cycleTime || 0;
-            let maxCapacity = nodeData.maxCapacity || 1;
-            const adjustedCycleDuration = cycleDuration / maxCapacity;
-            
-            path.progress += delta * simulationSpeed / adjustedCycleDuration;
-          }
+          // Normal node processing
+          let cycleDuration = nodeData.cycleTime || 0;
+          let maxCapacity = nodeData.maxCapacity || 1;
+          const adjustedCycleDuration = cycleDuration / maxCapacity;
+          
+          path.progress += delta * simulationSpeed / adjustedCycleDuration;
           
           if (path.progress >= 1) {
             const nextNodes = edgeMap.get(path.nodeId) || [];
@@ -310,9 +268,7 @@ export const useFactorySimulation = ({
                   inTransit: true,
                   transitTo: targetId,
                   transitTime: transitTime,
-                  transitProgress: 0,
-                  isGroup: nodes.find(n => n.id === targetId)?.type === 'group',
-                  groupChildren: groupChildrenMap.get(targetId)
+                  transitProgress: 0
                 });
               });
             }

@@ -81,89 +81,17 @@
 }
 
 /* Custom styles for React Flow components */
-.group-node {
-  background-color: rgba(206, 212, 218, 0.15);
-  border: 2px solid #e2e8f0;
-  border-radius: 8px;
-  width: 100%;
-  height: 100%;
-  position: relative;
-  transition: border 0.2s ease;
+.transit-glow-effect {
+  filter: drop-shadow(0 0 3px hsl(var(--primary)));
 }
 
-.dark .group-node {
-  background-color: rgba(76, 81, 92, 0.15);
-  border: 2px solid #1e293b;
-}
-
-.group-node:hover {
-  border-color: #cbd5e1;
-}
-
-.dark .group-node:hover {
-  border-color: #334155;
-}
-
-.group-drop-target {
-  background-color: rgba(206, 212, 218, 0.25);
-  border: 2px dashed #3b82f6;
-}
-
-.dark .group-drop-target {
-  background-color: rgba(76, 81, 92, 0.25);
-  border: 2px dashed #3b82f6;
-}
-
-.group-header-card {
-  position: absolute;
-  top: -15px;
-  left: 15px;
-  z-index: 10;
-  padding: 4px 8px;
-  border-radius: 4px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  display: flex;
-  align-items: center;
-  background-color: #fff;
-  min-width: 100px;
-}
-
-.dark .group-header-card {
-  background-color: #1e293b;
-}
-
-/* Sub-flow create button */
-.sub-flow-button {
-  position: absolute;
-  left: 10px;
-  bottom: 60px;
-  background-color: #fff;
-  color: #1e293b;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  border-radius: 6px;
-  padding: 6px 12px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  cursor: pointer;
-  z-index: 10;
-  transition: all 0.2s ease;
-}
-
-.dark .sub-flow-button {
-  background-color: #1e293b;
-  color: #f8fafc;
-  border-color: #334155;
-}
-
-.sub-flow-button:hover {
-  background-color: #f8fafc;
-  border-color: #cbd5e1;
-}
-
-.dark .sub-flow-button:hover {
-  background-color: #334155;
-  border-color: #475569;
+@keyframes edgeGlow {
+  from {
+    stroke-dashoffset: 1000;
+    opacity: 0.8;
+  }
+  to {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
 }

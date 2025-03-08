@@ -15,21 +15,17 @@ import ReactFlow, {
   ReactFlowProvider,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { FolderPlus } from 'lucide-react';
 import LiveStatsPanel from './LiveStatsPanel';
 import EquipmentNode from './nodes/EquipmentNode';
-import GroupNode from './nodes/GroupNode';
 import ConfigurableEdge from './edges/ConfigurableEdge';
 import ConnectionAlert from './ConnectionAlert';
 import { useFactorySimulation } from '@/hooks/useFactorySimulation';
-import { useGroupingOperations } from '@/hooks/useGroupingOperations';
 import { useDragAndDrop } from '@/hooks/useDragAndDrop';
 import { useGridOperations } from '@/hooks/useGridOperations';
 import { useNodeOperations } from '@/hooks/useNodeOperations';
 
 const nodeTypes: NodeTypes = {
   equipment: EquipmentNode,
-  group: GroupNode,
 };
 
 const edgeTypes: EdgeTypes = {
@@ -68,13 +64,6 @@ const FactoryEditorContent = ({
     simulationSpeed, 
     onUnitPositionUpdate 
   });
-  
-  const {
-    isNodeOverGroup,
-    createEmptyGroup,
-    onNodeDrag,
-    onNodeDragStop
-  } = useGroupingOperations(isSimulating);
   
   const {
     placeholderNode,
@@ -131,13 +120,8 @@ const FactoryEditorContent = ({
 
   const handleNodeDragStopWithGrid = useCallback((event: any, node: any) => {
     onNodeDragStopGrid(event, node, nodes);
-    onNodeDragStop(event, node);
-  }, [onNodeDragStopGrid, onNodeDragStop, nodes]);
+  }, [onNodeDragStopGrid, nodes]);
   
-  const handleCreateEmptyGroup = useCallback(() => {
-    createEmptyGroup(reactFlowInstance, reactFlowWrapper);
-  }, [createEmptyGroup, reactFlowInstance]);
-
   const handleDrop = useCallback((event: React.DragEvent) => {
     onDrop(event, reactFlowInstance, reactFlowWrapper);
   }, [onDrop, reactFlowInstance]);
@@ -170,7 +154,6 @@ const FactoryEditorContent = ({
           onDragOver={handleDragOver}
           onDragLeave={onDragLeave}
           onNodeDragStop={handleNodeDragStopWithGrid}
-          onNodeDrag={onNodeDrag}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           defaultEdgeOptions={{
@@ -197,18 +180,9 @@ const FactoryEditorContent = ({
           <MiniMap 
             nodeColor={(node) => {
               if (isSimulating && node.data?.bottleneck) return '#ef4444';
-              if (node.type === 'group') return '#94a3b8';
               return '#1D4ED8';
             }}
           />
-          
-          <div 
-            className="sub-flow-button"
-            onClick={handleCreateEmptyGroup}
-          >
-            <FolderPlus size={16} />
-            Create Sub-Flow
-          </div>
         </ReactFlow>
       </div>
       

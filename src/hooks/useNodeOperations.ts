@@ -83,38 +83,8 @@ export const useNodeOperations = (setNodes: any, setEdges: any) => {
   const onNodesDelete = useCallback((nodesToDelete: Node[]) => {
     const nodeIds = nodesToDelete.map(n => n.id);
     
-    // For any groups being deleted, release their children first
-    const groupsToDelete = nodesToDelete.filter(n => n.type === 'group');
-    
-    if (groupsToDelete.length > 0) {
-      setNodes((nodes: Node[]) => {
-        let updatedNodes = [...nodes];
-        
-        // First, adjust positions for all children of deleted groups
-        groupsToDelete.forEach(group => {
-          updatedNodes = updatedNodes.map(node => {
-            if (node.parentNode === group.id) {
-              return {
-                ...node,
-                position: {
-                  x: group.position.x + node.position.x,
-                  y: group.position.y + node.position.y,
-                },
-                parentNode: undefined,
-                extent: undefined
-              };
-            }
-            return node;
-          });
-        });
-        
-        // Then filter out the deleted nodes
-        return updatedNodes.filter(n => !nodeIds.includes(n.id));
-      });
-    } else {
-      // Regular deletion for non-group nodes
-      setNodes((nodes: Node[]) => nodes.filter(n => !nodeIds.includes(n.id)));
-    }
+    // Regular deletion for nodes
+    setNodes((nodes: Node[]) => nodes.filter(n => !nodeIds.includes(n.id)));
     
     // Remove associated edges
     setEdges((eds: Edge[]) => eds.filter(e => !nodeIds.includes(e.source) && !nodeIds.includes(e.target)));

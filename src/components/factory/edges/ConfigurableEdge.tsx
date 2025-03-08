@@ -8,7 +8,7 @@ import {
   useReactFlow,
 } from "reactflow";
 import { Badge } from "@/components/ui/badge";
-import { PencilIcon, TrashIcon, TruckIcon } from "lucide-react";
+import { PencilIcon, TrashIcon } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -138,13 +138,36 @@ const ConfigurableEdge = ({
     } : {})
   };
 
+  // For the glowing transit animation
+  const transitInProgress = data?.transitInProgress;
+  const transitProgress = data?.transitProgress || 0;
+
   return (
     <>
+      {/* Base edge */}
       <BaseEdge 
         path={edgePath} 
         markerEnd={markerEnd} 
         style={combinedStyle} 
       />
+      
+      {/* Transit animation overlay */}
+      {transitInProgress && (
+        <path
+          d={edgePath}
+          stroke="hsl(var(--primary))"
+          strokeWidth={4}
+          strokeLinecap="round"
+          strokeDasharray="1000"
+          strokeDashoffset={1000 - (transitProgress * 1000)}
+          fill="none"
+          className="transit-glow-effect"
+          style={{
+            filter: "drop-shadow(0 0 4px hsl(var(--primary)))",
+            transition: "stroke-dashoffset 0.1s ease-out"
+          }}
+        />
+      )}
       
       {/* Only show controls if this is not a temporary edge */}
       {!isTemp && (
@@ -215,18 +238,6 @@ const ConfigurableEdge = ({
                 >
                   <TrashIcon size={12} strokeWidth={2} aria-hidden="true" />
                 </Button>
-              </div>
-            )}
-
-            {data?.transitInProgress && (
-              <div 
-                className="absolute top-0 left-0"
-                style={{ 
-                  transform: `translate(${data.transitProgress * 100}%, -50%)`,
-                  transition: 'transform 0.1s ease-out'
-                }}
-              >
-                <TruckIcon size={18} className="text-primary" />
               </div>
             )}
           </div>
