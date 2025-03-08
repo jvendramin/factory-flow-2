@@ -62,20 +62,20 @@ const GroupNode = ({ id, data, selected }: NodeProps<GroupNodeData>) => {
     
     // Release all child nodes from the group
     setNodes((nodes) => {
-      const childNodes = nodes.filter(n => n.parentNode === id);
-      
       // First, update all child nodes to remove parentNode
       const updatedNodes = nodes.map(node => {
         if (node.parentNode === id) {
           // Adjust position to be absolute
           const parentNode = nodes.find(n => n.id === id);
+          if (!parentNode) return node;
+          
           return {
             ...node,
             parentNode: undefined,
             extent: undefined,
             position: {
-              x: (parentNode?.position.x || 0) + node.position.x,
-              y: (parentNode?.position.y || 0) + node.position.y
+              x: parentNode.position.x + node.position.x,
+              y: parentNode.position.y + node.position.y
             }
           };
         }

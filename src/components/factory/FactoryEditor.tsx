@@ -462,27 +462,31 @@ const FactoryEditorContent = ({
   const handleNodesChange = useCallback((changes) => {
     onNodesChange(changes);
     
-    changes.forEach(change => {
-      if (change.type === 'position' && change.dragging && change.id) {
-        const draggedNode = nodes.find(node => node.id === change.id);
-        if (draggedNode && draggedNode.type === 'group') {
-          setNodes(currentNodes => 
-            currentNodes.map(node => {
-              if (node.parentNode === change.id) {
-                return {
-                  ...node,
-                  position: {
-                    ...node.position
-                  }
-                };
-              }
-              return node;
-            })
-          );
-        }
+    const draggedGroupChange = changes.find(change => 
+      change.type === 'position' && 
+      change.dragging === true
+    );
+    
+    if (draggedGroupChange) {
+      const { id, position, positionAbsolute } = draggedGroupChange;
+      
+      const node = getNodes().find(n => n.id === id);
+      
+      if (node?.type === 'group') {
+        setNodes(nodes => 
+          nodes.map(n => {
+            if (n.id === id) {
+              return {
+                ...n,
+                className: 'group-drop-target'
+              };
+            }
+            return n;
+          })
+        );
       }
-    });
-  }, [nodes, onNodesChange, setNodes]);
+    }
+  }, [onNodesChange, getNodes]);
 
   const onEdgeChanges = useCallback((changes) => {
     onEdgesChange(changes);
@@ -612,7 +616,7 @@ const FactoryEditorContent = ({
                 ...n,
                 position: relativePosition,
                 parentNode: targetGroup.id,
-                extent: 'parent',
+                extent: 'parent' as const,
                 className: ''
               };
             } else if (n.id === targetGroup.id) {
