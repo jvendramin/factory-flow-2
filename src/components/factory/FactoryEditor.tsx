@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useRef, useEffect } from 'react';
 import ReactFlow, {
   Background,
@@ -34,7 +35,6 @@ import { Button } from '@/components/ui/button';
 
 const NODE_WIDTH = 240;
 const NODE_HEIGHT = 180;
-const GROUP_PADDING = 10;
 
 const nodeTypes: NodeTypes = {
   equipment: EquipmentNode,
@@ -52,14 +52,6 @@ interface FactoryEditorProps {
   onUnitPositionUpdate?: (position: { nodeId: string, progress: number } | null) => void;
 }
 
-interface InternalNode {
-  id: string;
-  position: XYPosition;
-  internals?: {
-    positionAbsolute?: XYPosition;
-  };
-}
-
 const FactoryEditorContent = ({ 
   isSimulating, 
   simulationMode = "instant",
@@ -75,7 +67,6 @@ const FactoryEditorContent = ({
   const [currentUnitPosition, setCurrentUnitPosition] = useState<{ nodeId: string, progress: number } | null>(null);
   const [showGrid, setShowGrid] = useState(true);
   const [snapToGrid, setSnapToGrid] = useState(true);
-  const [potentialGroupTarget, setPotentialGroupTarget] = useState<string | null>(null);
   
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number | null>(null);
@@ -449,8 +440,6 @@ const FactoryEditorContent = ({
   }, []);
   
   const onConnect = useCallback((params: Connection) => {
-    console.log("Connection params:", params);
-    
     setEdges((eds) => 
       addEdge({ 
         ...params, 
@@ -461,32 +450,7 @@ const FactoryEditorContent = ({
 
   const handleNodesChange = useCallback((changes) => {
     onNodesChange(changes);
-    
-    const draggedGroupChange = changes.find(change => 
-      change.type === 'position' && 
-      change.dragging === true
-    );
-    
-    if (draggedGroupChange) {
-      const { id, position, positionAbsolute } = draggedGroupChange;
-      
-      const node = getNodes().find(n => n.id === id);
-      
-      if (node?.type === 'group') {
-        setNodes(nodes => 
-          nodes.map(n => {
-            if (n.id === id) {
-              return {
-                ...n,
-                className: 'group-drop-target'
-              };
-            }
-            return n;
-          })
-        );
-      }
-    }
-  }, [onNodesChange, getNodes]);
+  }, [onNodesChange]);
 
   const onEdgeChanges = useCallback((changes) => {
     onEdgesChange(changes);
@@ -502,34 +466,35 @@ const FactoryEditorContent = ({
     setPendingConnection(null);
   }, []);
   
-  const checkNodeOverGroup = useCallback((node: Node, dragEvent: React.MouseEvent | MouseEvent) => {
-    if (node.type === 'group') return null;
+  // Helper function to check if a node is over a group
+  const isNodeOverGroup = useCallback((node: Node, groups: Node[]) => {
+    if (!node || !groups.length) return null;
     
-    const groups = getNodes().filter(n => n.type === 'group' && n.id !== node.id);
-    if (groups.length === 0) return null;
-    
+    // Center point of the node
     const nodeCenter = {
       x: node.position.x + (NODE_WIDTH / 2),
       y: node.position.y + (NODE_HEIGHT / 2)
     };
     
+    // Find the first group the node is over
     for (const group of groups) {
-      const groupWidth = group.style?.width as number || 300;
-      const groupHeight = group.style?.height as number || 200;
+      const width = group.style?.width as number || 300;
+      const height = group.style?.height as number || 200;
       
       if (
         nodeCenter.x > group.position.x && 
-        nodeCenter.x < group.position.x + groupWidth &&
+        nodeCenter.x < group.position.x + width &&
         nodeCenter.y > group.position.y && 
-        nodeCenter.y < group.position.y + groupHeight
+        nodeCenter.y < group.position.y + height
       ) {
         return group;
       }
     }
     
     return null;
-  }, [getNodes]);
+  }, []);
   
+  // Create an empty group
   const createEmptyGroup = useCallback(() => {
     if (!reactFlowInstance || !reactFlowWrapper.current) {
       return;
@@ -568,47 +533,56 @@ const FactoryEditorContent = ({
     });
   }, [reactFlowInstance, setNodes]);
   
+  // Handle node drag events to highlight potential group drops
   const onNodeDrag: NodeDragHandler = useCallback((event, node) => {
     if (isSimulating) return;
     
+    // Only process nodes that aren't already in a group
     if (!node.parentNode) {
-      const targetGroup = checkNodeOverGroup(node, event);
+      const groups = getNodes().filter(n => n.type === 'group' && n.id !== node.id);
+      const targetGroup = isNodeOverGroup(node, groups);
       
-      if (targetGroup) {
-        setNodes(nodes => 
-          nodes.map(n => {
-            if (n.id === targetGroup.id) {
-              return {
-                ...n,
-                className: 'group-drop-target'
-              };
-            }
-            return n;
-          })
-        );
-      } else {
-        setNodes(nodes => 
-          nodes.map(n => ({
-            ...n,
-            className: n.className?.replace('group-drop-target', '') || ''
-          }))
-        );
-      }
+      // Highlight potential drop targets
+      setNodes(nodes => 
+        nodes.map(n => {
+          if (targetGroup && n.id === targetGroup.id) {
+            return {
+              ...n,
+              className: 'group-drop-target'
+            };
+          }
+          
+          // Remove highlight from other groups
+          if (n.type === 'group' && n.className?.includes('group-drop-target')) {
+            return {
+              ...n,
+              className: n.className.replace('group-drop-target', '').trim()
+            };
+          }
+          
+          return n;
+        })
+      );
     }
-  }, [isSimulating, checkNodeOverGroup, setNodes]);
+  }, [isSimulating, isNodeOverGroup, getNodes, setNodes]);
   
+  // Handle node drag end to finalize group assignment
   const onNodeDragStop: NodeDragHandler = useCallback((event, node) => {
     if (isSimulating) return;
     
+    // Only process nodes that aren't already in a group
     if (!node.parentNode) {
-      const targetGroup = checkNodeOverGroup(node, event);
+      const groups = getNodes().filter(n => n.type === 'group' && n.id !== node.id);
+      const targetGroup = isNodeOverGroup(node, groups);
       
       if (targetGroup) {
+        // Calculate position relative to group
         const relativePosition = {
           x: node.position.x - targetGroup.position.x,
           y: node.position.y - targetGroup.position.y
         };
         
+        // Update node to be child of group
         setNodes(nodes => {
           return nodes.map(n => {
             if (n.id === node.id) {
@@ -626,12 +600,12 @@ const FactoryEditorContent = ({
                   ...n.data,
                   nodes: [...(n.data.nodes || []), node.id]
                 },
-                className: n.className?.replace('group-drop-target', '') || ''
+                className: (n.className || '').replace('group-drop-target', '').trim()
               };
             }
             return {
               ...n,
-              className: n.className?.replace('group-drop-target', '') || ''
+              className: (n.className || '').replace('group-drop-target', '').trim()
             };
           });
         });
@@ -640,12 +614,19 @@ const FactoryEditorContent = ({
           title: "Node Added to Sub-Flow",
           description: "Node has been added to the sub-flow"
         });
+      } else {
+        // Clear any highlight classes
+        setNodes(nodes => 
+          nodes.map(n => ({
+            ...n,
+            className: (n.className || '').replace('group-drop-target', '').trim()
+          }))
+        );
       }
     }
-    
-    setPotentialGroupTarget(null);
-  }, [isSimulating, checkNodeOverGroup, setNodes]);
+  }, [isSimulating, isNodeOverGroup, getNodes, setNodes]);
   
+  // Handle dropping new equipment onto the canvas
   const onDrop = useCallback(
     (event: React.DragEvent) => {
       event.preventDefault();
@@ -655,6 +636,7 @@ const FactoryEditorContent = ({
         return;
       }
 
+      // Parse the dragged equipment data
       const equipmentData = JSON.parse(event.dataTransfer.getData('application/reactflow'));
       
       if (typeof equipmentData.type !== 'string') {
@@ -667,26 +649,32 @@ const FactoryEditorContent = ({
         y: event.clientY - reactFlowBounds.top,
       });
 
-      const nodesAtDrop = getNodes().filter(n => {
-        if (n.type !== 'group') return false;
-        
-        const groupWidth = n.style?.width as number || 300;
-        const groupHeight = n.style?.height as number || 200;
-        
-        return (
-          position.x > n.position.x && 
-          position.x < n.position.x + groupWidth &&
-          position.y > n.position.y && 
-          position.y < n.position.y + groupHeight
-        );
-      });
+      // Check if dropping inside a group
+      const groups = getNodes().filter(n => n.type === 'group');
       
-      const parentGroup = nodesAtDrop.length > 0 ? nodesAtDrop[0] : null;
+      // Find which group (if any) the position is inside of
+      let parentGroup = null;
+      for (const group of groups) {
+        const width = group.style?.width as number || 300;
+        const height = group.style?.height as number || 200;
+        
+        if (
+          position.x > group.position.x && 
+          position.x < group.position.x + width &&
+          position.y > group.position.y && 
+          position.y < group.position.y + height
+        ) {
+          parentGroup = group;
+          break;
+        }
+      }
       
+      // Set position based on whether we're dropping in a group
       let newNodePosition = position;
       let parentNodeId = undefined;
       
       if (parentGroup) {
+        // Calculate position relative to the group
         newNodePosition = {
           x: position.x - parentGroup.position.x,
           y: position.y - parentGroup.position.y
@@ -694,6 +682,7 @@ const FactoryEditorContent = ({
         parentNodeId = parentGroup.id;
       }
 
+      // Create the new node
       const newNode = {
         id: `equipment-${Date.now()}`,
         type: 'equipment',
@@ -706,8 +695,10 @@ const FactoryEditorContent = ({
         },
       };
 
+      // Add the node to the canvas
       setNodes((nds) => nds.concat(newNode));
       
+      // If adding to a group, update the group data
       if (parentGroup) {
         setNodes(nds => 
           nds.map(n => {
@@ -733,6 +724,7 @@ const FactoryEditorContent = ({
     [reactFlowInstance, setNodes, getNodes]
   );
 
+  // Handle drag over events for live preview
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
@@ -785,6 +777,7 @@ const FactoryEditorContent = ({
     
   }, [reactFlowInstance, placeholderNode, setNodes]);
   
+  // Handle drag leave events
   const onDragLeave = useCallback(() => {
     if (placeholderNode) {
       setNodes(nds => nds.filter(n => n.id !== 'placeholder'));
@@ -792,6 +785,7 @@ const FactoryEditorContent = ({
     }
   }, [placeholderNode, setNodes]);
   
+  // Find best position for new nodes
   const findBestNodePosition = useCallback(() => {
     let maxX = 0;
     let avgY = 0;
@@ -812,6 +806,7 @@ const FactoryEditorContent = ({
     return { x: maxX + 250, y: avgY };
   }, [nodes]);
   
+  // Handle adding nodes from connection
   const handleAddFromConnection = useCallback((equipment: Equipment) => {
     if (!pendingConnection || !pendingConnection.source) return;
     
@@ -846,6 +841,7 @@ const FactoryEditorContent = ({
     setShowConnectionAlert(false);
   }, [pendingConnection, findBestNodePosition, setNodes, setEdges]);
   
+  // Snap nodes to grid on drag stop
   const onNodeDragStopGrid = useCallback((event: any, node: Node) => {
     if (!snapToGrid) return;
     
@@ -865,16 +861,51 @@ const FactoryEditorContent = ({
     setNodes(newNodes);
   }, [nodes, setNodes, snapToGrid]);
   
+  // Handle node deletion
   const onNodesDelete = useCallback((nodesToDelete: Node[]) => {
     const nodeIds = nodesToDelete.map(n => n.id);
     
+    // For any groups being deleted, release their children first
+    const groupsToDelete = nodesToDelete.filter(n => n.type === 'group');
+    
+    if (groupsToDelete.length > 0) {
+      setNodes(nodes => {
+        let updatedNodes = [...nodes];
+        
+        // First, adjust positions for all children of deleted groups
+        groupsToDelete.forEach(group => {
+          updatedNodes = updatedNodes.map(node => {
+            if (node.parentNode === group.id) {
+              return {
+                ...node,
+                position: {
+                  x: group.position.x + node.position.x,
+                  y: group.position.y + node.position.y,
+                },
+                parentNode: undefined,
+                extent: undefined
+              };
+            }
+            return node;
+          });
+        });
+        
+        // Then filter out the deleted nodes
+        return updatedNodes.filter(n => !nodeIds.includes(n.id));
+      });
+    } else {
+      // Regular deletion for non-group nodes
+      setNodes(nodes => nodes.filter(n => !nodeIds.includes(n.id)));
+    }
+    
+    // Remove associated edges
     setEdges(eds => eds.filter(e => !nodeIds.includes(e.source) && !nodeIds.includes(e.target)));
     
     toast({
       title: "Equipment Removed",
       description: "The selected equipment has been removed from the factory floor",
     });
-  }, [setEdges]);
+  }, [setNodes, setEdges]);
 
   return (
     <div className="w-full h-full flex flex-col">
@@ -897,6 +928,7 @@ const FactoryEditorContent = ({
           onDragLeave={onDragLeave}
           onNodeDragStop={onNodeDragStopGrid}
           onNodeDrag={onNodeDrag}
+          onNodeDragStop={onNodeDragStop}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           defaultEdgeOptions={{

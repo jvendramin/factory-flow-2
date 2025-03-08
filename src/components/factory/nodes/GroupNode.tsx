@@ -15,7 +15,7 @@ type GroupNodeData = {
 const GroupNode = ({ id, data, selected }: NodeProps<GroupNodeData>) => {
   const [isEditing, setIsEditing] = useState(false);
   const [label, setLabel] = useState(data.label || "Sub-Flow");
-  const { setNodes, deleteElements } = useReactFlow();
+  const { setNodes, getNodes } = useReactFlow();
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Focus the input when editing starts
@@ -60,15 +60,18 @@ const GroupNode = ({ id, data, selected }: NodeProps<GroupNodeData>) => {
   const handleDelete = useCallback((event: React.MouseEvent) => {
     event.stopPropagation();
     
-    // Release all child nodes from the group
-    setNodes((nodes) => {
-      // First, update all child nodes to remove parentNode
-      const updatedNodes = nodes.map(node => {
+    // Get all child nodes before deleting
+    const childNodeIds = getNodes()
+      .filter(node => node.parentNode === id)
+      .map(node => node.id);
+    
+    // First update all child nodes to remove parentNode relationship
+    setNodes(nodes => {
+      const parentNode = nodes.find(n => n.id === id);
+      if (!parentNode) return nodes;
+      
+      return nodes.map(node => {
         if (node.parentNode === id) {
-          // Adjust position to be absolute
-          const parentNode = nodes.find(n => n.id === id);
-          if (!parentNode) return node;
-          
           return {
             ...node,
             parentNode: undefined,
@@ -81,11 +84,13 @@ const GroupNode = ({ id, data, selected }: NodeProps<GroupNodeData>) => {
         }
         return node;
       });
-      
-      // Then filter out the group node itself
-      return updatedNodes.filter(node => node.id !== id);
     });
-  }, [id, setNodes]);
+    
+    // Then delete the group node
+    setTimeout(() => {
+      setNodes(nodes => nodes.filter(node => node.id !== id));
+    }, 50);
+  }, [id, setNodes, getNodes]);
 
   // Define handle styles
   const handleStyle = {
@@ -96,7 +101,7 @@ const GroupNode = ({ id, data, selected }: NodeProps<GroupNodeData>) => {
   };
 
   return (
-    <div className="group-container">
+    <div className="group-node">
       <NodeResizer
         minWidth={300}
         minHeight={200}
