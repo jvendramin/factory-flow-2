@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -53,7 +54,7 @@ export default {
 					foreground: 'hsl(var(--card-foreground))'
 				},
 				sidebar: {
-					DEFAULT: 'hsl(var(--sidebar-background))',
+					DEFAULT: 'hsl(var(--sidebar))',
 					foreground: 'hsl(var(--sidebar-foreground))',
 					primary: 'hsl(var(--sidebar-primary))',
 					'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
@@ -84,11 +85,33 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'sidebar-slide-in': {
+					from: {
+						width: '0',
+						opacity: '0'
+					},
+					to: {
+						width: 'var(--sidebar-width)',
+						opacity: '1'
+					}
+				},
+				'sidebar-slide-out': {
+					from: {
+						width: 'var(--sidebar-width)',
+						opacity: '1'
+					},
+					to: {
+						width: '0',
+						opacity: '0'
+					}
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'sidebar-slide-in': 'sidebar-slide-in 0.3s ease-out',
+				'sidebar-slide-out': 'sidebar-slide-out 0.3s ease-out'
 			}
 		}
 	},
