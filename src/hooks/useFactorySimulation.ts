@@ -216,9 +216,11 @@ export const useFactorySimulation = ({
       
       activePaths.forEach(path => {
         if (path.inTransit) {
-          // Update transit progress based on elapsed time and transit time
-          // This ensures the glow animation progresses at the correct rate
-          path.transitProgress += delta * simulationSpeed / Math.max(path.transitTime, 0.1);
+          // Calculate progress increment based on transit time and ensure minimum value to prevent division by zero
+          const transitTimeSeconds = Math.max(path.transitTime, 0.1);
+          
+          // Update progress based on simulation speed and delta time
+          path.transitProgress += (delta * simulationSpeed) / transitTimeSeconds;
           
           if (path.transitTime > 0) {
             // Find edge between current node and target node
@@ -232,7 +234,8 @@ export const useFactorySimulation = ({
             }
           }
           
-          if (path.transitProgress >= 1 || path.transitTime <= 0) {
+          // Check if transit is complete
+          if (path.transitProgress >= 1) {
             // Transit complete, move to the next node
             nextActivePaths.push({
               nodeId: path.transitTo,
@@ -245,6 +248,7 @@ export const useFactorySimulation = ({
             
             activeNodeIds.add(path.transitTo);
           } else {
+            // Continue transit
             nextActivePaths.push({...path});
           }
         } else {

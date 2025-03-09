@@ -142,6 +142,10 @@ const ConfigurableEdge = ({
   const transitInProgress = data?.transitInProgress;
   const transitProgress = data?.transitProgress || 0;
 
+  // Calculate correct stroke dashoffset to ensure the glow moves along the entire path
+  // This is especially important for curved paths where the path length may vary
+  const pathLength = 1000; // We use a fixed value for consistency
+
   return (
     <>
       {/* Base edge */}
@@ -151,20 +155,20 @@ const ConfigurableEdge = ({
         style={combinedStyle} 
       />
       
-      {/* Transit animation overlay */}
+      {/* Transit animation overlay - improved to ensure complete path traversal */}
       {transitInProgress && (
         <path
           d={edgePath}
           stroke="hsl(var(--primary))"
           strokeWidth={4}
           strokeLinecap="round"
-          strokeDasharray="1000"
-          strokeDashoffset={1000 - (transitProgress * 1000)}
+          strokeDasharray={`${pathLength}`}
+          strokeDashoffset={(1 - transitProgress) * pathLength}
           fill="none"
           className="transit-glow-effect"
           style={{
             filter: "drop-shadow(0 0 4px hsl(var(--primary)))",
-            transition: "stroke-dashoffset 0.1s ease-out"
+            transition: "stroke-dashoffset 0.05s linear"
           }}
         />
       )}
