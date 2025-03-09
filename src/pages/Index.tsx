@@ -55,7 +55,15 @@ const Index = () => {
   };
   return <div className="flex h-screen w-full overflow-hidden bg-background">
       {/* Left Sidebar - Equipment Panel */}
-      
+      <div className="w-64 border-r border-border bg-sidebar flex flex-col">
+        <div className="p-4 border-b border-border flex items-center justify-between">
+          <h1 className="font-bold text-lg">Factory Flow</h1>
+          <Button variant="ghost" size="icon" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+            {theme === "dark" ? <SunIcon size={18} /> : <MoonIcon size={18} />}
+          </Button>
+        </div>
+        <EquipmentPanel />
+      </div>
       
       {/* Main Content - Factory Editor */}
       <div className="flex-1 flex flex-col">
@@ -64,8 +72,8 @@ const Index = () => {
             {isSaving ? <div className="flex items-center text-xs text-muted-foreground">
                 <Save size={14} className="mr-1 animate-pulse" />
                 Saving...
-              </div> : <div className="flex items-center text-xs text-muted-foreground">
-                <Save size={14} className="mr-1" />
+              </div> : <div className="flex items-center text-xs text-muted-foreground pl-3">
+                
                 Saved
               </div>}
           </div>
