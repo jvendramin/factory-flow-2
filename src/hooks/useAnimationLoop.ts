@@ -1,8 +1,8 @@
 
 import { useCallback, useRef, useEffect } from 'react';
-import { Node, Edge, useReactFlow } from 'reactflow';
+import { useReactFlow } from 'reactflow';
 import { toast } from '@/components/ui/use-toast';
-import { ActivePath, EdgeConnection } from '@/types/simulation';
+import { ActivePath } from '@/types/simulation';
 import { buildFactoryGraph, calculateSystemStats } from '@/utils/simulationUtils';
 
 /**
@@ -70,6 +70,11 @@ export const useAnimationLoop = (
     
     // If no valid start nodes were found, abort simulation
     if (startNodeIds.length === 0) {
+      toast({
+        title: "Simulation Error",
+        description: "Could not identify a valid starting point. Ensure you have at least one node with no incoming connections.",
+        variant: "destructive"
+      });
       return;
     }
     
@@ -98,8 +103,8 @@ export const useAnimationLoop = (
         return;
       }
       
-      // Calculate time delta in seconds
-      const delta = (timestamp - lastTimestamp.current) / 1000;
+      // Calculate time delta in seconds with smoothing
+      const delta = Math.min((timestamp - lastTimestamp.current) / 1000, 0.1); // Cap max delta to prevent jumps
       lastTimestamp.current = timestamp;
       
       // If all units have completed the process flow
@@ -137,8 +142,9 @@ export const useAnimationLoop = (
           // Calculate progress increment based on transit time and ensure minimum value to prevent division by zero
           const transitTimeSeconds = Math.max(path.transitTime, 0.1);
           
-          // Update progress based on simulation speed and delta time
-          path.transitProgress += (delta * simulationSpeed) / transitTimeSeconds;
+          // Update progress based on simulation speed and delta time - ensure smooth progression
+          const progressIncrement = (delta * simulationSpeed) / transitTimeSeconds;
+          path.transitProgress = Math.min(1, path.transitProgress + progressIncrement);
           
           if (path.transitTime > 0) {
             // Find edge between current node and target node
@@ -178,15 +184,24 @@ export const useAnimationLoop = (
           // Normal node processing
           let cycleDuration = nodeData.cycleTime || 0;
           let maxCapacity = nodeData.maxCapacity || 1;
-          const adjustedCycleDuration = cycleDuration / maxCapacity;
           
-          path.progress += delta * simulationSpeed / adjustedCycleDuration;
+          // Ensure we don't divide by zero
+          const adjustedCycleDuration = Math.max(cycleDuration / maxCapacity, 0.1);
+          
+          // Calculate progress increment with smoothing
+          const progressIncrement = delta * simulationSpeed / adjustedCycleDuration;
+          path.progress = Math.min(1, path.progress + progressIncrement);
           
           if (path.progress >= 1) {
             const nextNodes = edgeMap.get(path.nodeId) || [];
             
             if (nextNodes.length === 0) {
-              // End of the flow
+              // End of the flow, unit is complete
+              toast({
+                title: "Unit Complete",
+                description: `A unit has completed processing at ${nodeData.name || path.nodeId}`,
+                variant: "default"
+              });
             } else {
               nextNodes.forEach(({ targetId, transitTime }) => {
                 nextActivePaths.push({
@@ -244,13 +259,15 @@ export const useAnimationLoop = (
         onUnitPositionUpdate(null);
       }
       
-      // Request next animation frame
-      animationFrameRef.current = requestAnimationFrame(animate);
+      // Request next animation frame if simulation is still running
+      if (isSimulating) {
+        animationFrameRef.current = requestAnimationFrame(animate);
+      }
     };
     
     // Start animation loop
     animationFrameRef.current = requestAnimationFrame(animate);
-  }, [getNodes, getEdges, setNodes, setEdges, simulationSpeed, onUnitPositionUpdate]);
+  }, [getNodes, getEdges, setNodes, setEdges, simulationSpeed, onUnitPositionUpdate, isSimulating]);
   
   return {
     startPlayByPlayAnimation,

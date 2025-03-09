@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -81,7 +82,26 @@
 
 /* Custom styles for React Flow components */
 .transit-glow-effect {
-  filter: drop-shadow(0 0 3px hsl(var(--primary)));
+  filter: drop-shadow(0 0 4px hsl(var(--primary)));
+}
+
+.transit-background-pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.transit-particle {
+  offset-rotate: 0deg;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 
 @keyframes edgeGlow {
@@ -92,5 +112,14 @@
   to {
     stroke-dashoffset: 0;
     opacity: 1;
+  }
+}
+
+@keyframes dashdraw {
+  from {
+    stroke-dashoffset: 10;
+  }
+  to {
+    stroke-dashoffset: 0;
   }
 }

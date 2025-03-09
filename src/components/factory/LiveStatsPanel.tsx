@@ -1,16 +1,24 @@
+
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Node, Edge } from "reactflow";
+import { Progress } from "@/components/ui/progress";
+
 interface LiveStatsPanelProps {
   nodes: Node[];
   edges: Edge[];
 }
+
 interface SystemStats {
   totalCycleTime: number;
   estimatedThroughput: number;
   bottleneckName: string | null;
   bottleneckCycleTime: number;
+  activeSimulation: boolean;
+  activeNodes: number;
+  totalTransitTime: number;
 }
+
 const LiveStatsPanel = ({
   nodes,
   edges
@@ -19,10 +27,23 @@ const LiveStatsPanel = ({
     totalCycleTime: 0,
     estimatedThroughput: 0,
     bottleneckName: null,
-    bottleneckCycleTime: 0
+    bottleneckCycleTime: 0,
+    activeSimulation: false,
+    activeNodes: 0,
+    totalTransitTime: 0
   });
+
   useEffect(() => {
     if (nodes.length === 0) return;
+
+    // Calculate active simulation stats
+    const activeNodes = nodes.filter(node => node.data?.active).length;
+    const activeSimulation = activeNodes > 0;
+    
+    // Calculate total transit time
+    const totalTransitTime = edges.reduce((total, edge) => {
+      return total + (edge.data?.transitTime || 0);
+    }, 0);
 
     // Build a graph representation
     const graph = new Map<string, string[]>();
@@ -106,20 +127,33 @@ const LiveStatsPanel = ({
         totalCycleTime: maxPathTime,
         estimatedThroughput: throughput,
         bottleneckName: bottleneckNode?.data?.name || null,
-        bottleneckCycleTime: adjustedBottleneckTime
+        bottleneckCycleTime: adjustedBottleneckTime,
+        activeSimulation,
+        activeNodes,
+        totalTransitTime
       });
     } else {
       setStats({
         totalCycleTime: maxPathTime,
         estimatedThroughput: 0,
         bottleneckName: null,
-        bottleneckCycleTime: 0
+        bottleneckCycleTime: 0,
+        activeSimulation,
+        activeNodes,
+        totalTransitTime
       });
     }
   }, [nodes, edges]);
-  return <Card className="mt-4">
-      <CardContent className="w-full">
-        <h3 className="text-sm font-medium mb-3">Live System Stats</h3>
+
+  return (
+    <Card className="mt-4">
+      <CardContent className="pt-4 w-full">
+        <h3 className="text-sm font-medium mb-3 flex items-center">
+          Live System Stats
+          {stats.activeSimulation && (
+            <span className="ml-2 h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+          )}
+        </h3>
         
         <div className="grid grid-cols-2 gap-y-3 text-sm">
           <div className="flex flex-col">
@@ -132,12 +166,33 @@ const LiveStatsPanel = ({
             <span className="font-medium">{stats.estimatedThroughput} units/hr</span>
           </div>
           
-          {stats.bottleneckName && <div className="col-span-2 flex flex-col">
+          <div className="flex flex-col">
+            <span className="text-xs text-muted-foreground">Total Transit Time</span>
+            <span className="font-medium">{stats.totalTransitTime.toFixed(1)}s</span>
+          </div>
+          
+          {stats.activeSimulation && (
+            <div className="flex flex-col">
+              <span className="text-xs text-muted-foreground">Active Nodes</span>
+              <span className="font-medium">{stats.activeNodes} / {nodes.length}</span>
+            </div>
+          )}
+          
+          {stats.bottleneckName && (
+            <div className="col-span-2 flex flex-col">
               <span className="text-xs text-muted-foreground">Bottleneck</span>
               <span className="font-medium text-destructive">{stats.bottleneckName} ({stats.bottleneckCycleTime.toFixed(1)}s)</span>
-            </div>}
+              <Progress 
+                value={100} 
+                className="h-1.5 mt-1" 
+                indicatorClassName="bg-destructive" 
+              />
+            </div>
+          )}
         </div>
       </CardContent>
-    </Card>;
+    </Card>
+  );
 };
+
 export default LiveStatsPanel;

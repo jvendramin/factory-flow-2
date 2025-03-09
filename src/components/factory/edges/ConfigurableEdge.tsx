@@ -142,9 +142,8 @@ const ConfigurableEdge = ({
   const transitInProgress = data?.transitInProgress;
   const transitProgress = data?.transitProgress || 0;
 
-  // Calculate correct stroke dashoffset to ensure the glow moves along the entire path
-  // This is especially important for curved paths where the path length may vary
-  const pathLength = 1000; // We use a fixed value for consistency
+  // Calculate path length for the animation
+  const pathLength = 1000; // Fixed value for consistent animation
 
   return (
     <>
@@ -155,22 +154,47 @@ const ConfigurableEdge = ({
         style={combinedStyle} 
       />
       
-      {/* Transit animation overlay - improved to ensure complete path traversal */}
+      {/* Enhanced transit animation overlay */}
       {transitInProgress && (
-        <path
-          d={edgePath}
-          stroke="hsl(var(--primary))"
-          strokeWidth={4}
-          strokeLinecap="round"
-          strokeDasharray={`${pathLength}`}
-          strokeDashoffset={(1 - transitProgress) * pathLength}
-          fill="none"
-          className="transit-glow-effect"
-          style={{
-            filter: "drop-shadow(0 0 4px hsl(var(--primary)))",
-            transition: "stroke-dashoffset 0.05s linear"
-          }}
-        />
+        <>
+          {/* Background pulse effect */}
+          <path
+            d={edgePath}
+            stroke="hsl(var(--primary)/0.2)"
+            strokeWidth={6}
+            strokeLinecap="round"
+            fill="none"
+            className="transit-background-pulse"
+          />
+          
+          {/* Main glow effect */}
+          <path
+            d={edgePath}
+            stroke="hsl(var(--primary))"
+            strokeWidth={4}
+            strokeLinecap="round"
+            strokeDasharray={`${pathLength}`}
+            strokeDashoffset={(1 - transitProgress) * pathLength}
+            fill="none"
+            className="transit-glow-effect"
+            style={{
+              filter: "drop-shadow(0 0 6px hsl(var(--primary)))",
+              transition: `stroke-dashoffset ${Math.min(0.05, transitTime * 0.01)}s linear`
+            }}
+          />
+          
+          {/* Leading particle effect */}
+          <circle 
+            r={4}
+            fill="white"
+            filter="drop-shadow(0 0 8px hsl(var(--primary)))"
+            className="transit-particle"
+            style={{
+              offset: `${transitProgress * 100}% 0`,
+              offsetPath: `path('${edgePath}')`,
+            }}
+          />
+        </>
       )}
       
       {/* Only show controls if this is not a temporary edge */}
@@ -192,8 +216,8 @@ const ConfigurableEdge = ({
               <PopoverTrigger asChild>
                 <div className="relative inline-block">
                   <Badge 
-                    variant="secondary" 
-                    className="cursor-pointer hover:bg-secondary/90 shadow-sm border border-border"
+                    variant={transitInProgress ? "default" : "secondary"}
+                    className={`cursor-pointer hover:bg-secondary/90 shadow-sm border border-border ${transitInProgress ? 'animate-pulse' : ''}`}
                     onClick={() => setIsEditing(true)}
                   >
                     {transitTime > 0 ? `${transitTime}s` : '0s'}

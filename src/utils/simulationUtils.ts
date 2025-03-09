@@ -36,13 +36,30 @@ export const buildFactoryGraph = (
     edgeMap.get(n.id)!.length > 0
   ).map(n => n.id);
   
-  // If no valid start nodes were found, display a warning
-  if (startNodeIds.length === 0) {
-    toast({
-      title: "Simulation Error",
-      description: "Could not identify the starting point of your process flow. Ensure nodes are connected.",
-      variant: "destructive"
-    });
+  // If no valid start nodes were found but there are nodes, try to find a cycle start
+  if (startNodeIds.length === 0 && nodes.length > 0) {
+    // Look for nodes with both incoming and outgoing edges
+    const potentialCycleStarts = nodes.filter(n => 
+      edgeMap.has(n.id) && 
+      edgeMap.get(n.id)!.length > 0 &&
+      allTargets.has(n.id)
+    ).map(n => n.id);
+    
+    if (potentialCycleStarts.length > 0) {
+      // Use the first node as a starting point for cycles
+      startNodeIds.push(potentialCycleStarts[0]);
+      toast({
+        title: "Cyclic Flow Detected",
+        description: "Starting simulation from an arbitrary node in the cycle.",
+        variant: "default"
+      });
+    } else {
+      toast({
+        title: "Simulation Error",
+        description: "Could not identify the starting point of your process flow. Ensure nodes are connected properly.",
+        variant: "destructive"
+      });
+    }
   }
   
   // Find all connected nodes in the graph
@@ -63,6 +80,16 @@ export const buildFactoryGraph = (
   startNodeIds.forEach(nodeId => {
     findConnectedNodes(nodeId);
   });
+  
+  // Warn about disconnected nodes
+  const disconnectedNodes = nodes.filter(n => !connectedNodes.has(n.id));
+  if (disconnectedNodes.length > 0) {
+    toast({
+      title: "Disconnected Nodes",
+      description: `${disconnectedNodes.length} node(s) are not connected to the main flow and will be ignored.`,
+      variant: "default"
+    });
+  }
   
   return { edgeMap, connectedNodes, startNodeIds };
 };
