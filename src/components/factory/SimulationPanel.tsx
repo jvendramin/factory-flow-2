@@ -124,7 +124,7 @@ const SimulationPanel = ({
     });
   };
   return <div className="flex flex-col h-full">
-      <div className="p-4 border-b border-border">
+      <div className="p-1 border-b border-border">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="px-4 flex items-center justify-between">
           <TabsList className="gap-1 bg-transparent">
             <TabsTrigger value="simulate" className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none">
