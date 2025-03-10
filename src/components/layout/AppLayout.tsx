@@ -85,10 +85,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       
       <SidebarTrigger className="top-4 left-[17rem] z-10" />
       
-      <main className="flex-1 overflow-auto bg-background p-6 ml-3 rounded-tl-xl rounded-bl-xl shadow-sm">
-        <div className="mx-auto max-w-7xl">
-          {children}
-        </div>
+      <main className="flex-1 overflow-auto bg-background rounded-tl-xl rounded-bl-xl shadow-sm ml-3">
+        {children}
       </main>
     </div>
   );

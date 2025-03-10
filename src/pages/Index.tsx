@@ -4,12 +4,11 @@ import FactoryEditor from "@/components/factory/FactoryEditor";
 import EquipmentPanel from "@/components/factory/EquipmentPanel";
 import SimulationPanel from "@/components/factory/SimulationPanel";
 import { Button } from "@/components/ui/button";
-import { MoonIcon, SunIcon, Save, Share2 } from "lucide-react";
+import { Share2, Save } from "lucide-react";
 import { useTheme } from "@/components/theme/theme-provider";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "@/components/ui/use-toast";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const Index = () => {
   const { theme, setTheme } = useTheme();
@@ -56,8 +55,8 @@ const Index = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="h-full flex flex-col">
+      <div className="flex items-center justify-between p-6 border-b border-border">
         <div>
           <h1 className="text-2xl font-bold">Factory Flow</h1>
           <p className="text-muted-foreground">Design and simulate your factory layout</p>
@@ -90,10 +89,11 @@ const Index = () => {
         </div>
       </div>
       
-      <Card className="border-border overflow-hidden">
-        <CardHeader className="p-4 border-b border-border flex flex-row justify-between items-center space-y-0">
-          <div className="flex items-center gap-2">
-            {isEditing ? (
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Equipment Panel */}
+        <div className="w-64 border-r border-border bg-card h-full">
+          <div className="p-4 border-b border-border">
+            <h2 className="font-medium text-base">{isEditing ? (
               <Input 
                 value={factoryName} 
                 onChange={e => setFactoryName(e.target.value)} 
@@ -103,16 +103,20 @@ const Index = () => {
                 autoFocus 
               />
             ) : (
-              <h2 
-                className="font-medium text-base cursor-pointer hover:text-primary transition-colors" 
+              <span 
+                className="cursor-pointer hover:text-primary transition-colors" 
                 onClick={() => setIsEditing(true)}
               >
                 {factoryName}
-              </h2>
-            )}
+              </span>
+            )}</h2>
           </div>
-          
-          <div className="flex items-center gap-2">
+          <EquipmentPanel />
+        </div>
+        
+        {/* Factory Editor */}
+        <div className="flex-1 relative">
+          <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
             <Button 
               variant="ghost" 
               size="sm" 
@@ -122,36 +126,25 @@ const Index = () => {
               {isSimulating ? "Stop Simulation" : "Start Simulation"}
             </Button>
           </div>
-        </CardHeader>
+          <FactoryEditor 
+            isSimulating={isSimulating} 
+            simulationMode={simulationMode} 
+            simulationSpeed={simulationSpeed} 
+            onUnitPositionUpdate={setCurrentUnitPosition} 
+          />
+        </div>
         
-        <CardContent className="p-0 flex h-[600px]">
-          {/* Left Equipment Panel */}
-          <div className="w-64 border-r border-border bg-card h-full">
-            <EquipmentPanel />
-          </div>
-          
-          {/* Factory Editor */}
-          <div className="flex-1 relative">
-            <FactoryEditor 
-              isSimulating={isSimulating} 
-              simulationMode={simulationMode} 
-              simulationSpeed={simulationSpeed} 
-              onUnitPositionUpdate={setCurrentUnitPosition} 
-            />
-          </div>
-          
-          {/* Right Simulation Panel */}
-          <div className="w-80 border-l border-border bg-card h-full">
-            <SimulationPanel 
-              isSimulating={isSimulating} 
-              setIsSimulating={setIsSimulating} 
-              simulationMode={simulationMode} 
-              setSimulationMode={setSimulationMode} 
-              currentUnitPosition={currentUnitPosition} 
-            />
-          </div>
-        </CardContent>
-      </Card>
+        {/* Right Simulation Panel */}
+        <div className="w-80 border-l border-border bg-card h-full">
+          <SimulationPanel 
+            isSimulating={isSimulating} 
+            setIsSimulating={setIsSimulating} 
+            simulationMode={simulationMode} 
+            setSimulationMode={setSimulationMode} 
+            currentUnitPosition={currentUnitPosition} 
+          />
+        </div>
+      </div>
     </div>
   );
 };
