@@ -117,12 +117,23 @@
 }
 
 .factory-panel {
-  @apply h-full overflow-auto border-r border-border;
+  @apply h-full overflow-auto;
 }
 
 /* Main content area styling */
 .main-content {
-  @apply rounded-l-xl shadow-md;
+  @apply rounded-l-3xl shadow-xl relative z-10;
+}
+
+/* Layer effect for sidebar and content */
+.layered-ui {
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Rounded edge styling */
+.rounded-edge {
+  border-top-left-radius: 24px;
+  border-bottom-left-radius: 24px;
 }
 
 /* Custom styles for React Flow components */

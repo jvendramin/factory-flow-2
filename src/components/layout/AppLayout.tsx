@@ -36,7 +36,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="flex h-screen w-full overflow-hidden">
+    <div className="flex h-screen w-full overflow-hidden bg-sidebar">
       <Sidebar>
         <SidebarHeader>
           <div className="flex items-center">
@@ -83,9 +83,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         </SidebarFooter>
       </Sidebar>
       
-      <SidebarTrigger className="top-4 left-[17rem] z-10" />
+      <SidebarTrigger className="top-4 left-[17rem] z-20" />
       
-      <main className="flex-1 bg-background ml-3 rounded-l-xl shadow-sm overflow-hidden">
+      <main className="flex-1 bg-background rounded-l-3xl shadow-xl overflow-hidden">
         {children}
       </main>
     </div>
