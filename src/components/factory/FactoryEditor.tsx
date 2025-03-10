@@ -1,4 +1,4 @@
-
+import React, { useCallback, useRef, useState } from 'react';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import ReactFlow, {
   Background,
@@ -54,7 +54,6 @@ const FactoryEditorContent = ({
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { getNodes } = useReactFlow();
   
-  // Initialize custom hooks
   const { 
     currentUnitPosition, 
     startPlayByPlaySimulation 
@@ -137,7 +136,23 @@ const FactoryEditorContent = ({
   return (
     <div className="w-full h-full flex flex-col">
       <div className="px-4 pt-2 flex justify-between items-center">
-        <LiveStatsPanel nodes={nodes} edges={edges} />
+        <LiveStatsPanel 
+          isSimulating={isSimulating}
+          simulationTime={0}
+          throughput={75}
+          efficiency={85}
+          bottlenecks={[
+            { name: "Assembly Line A", value: 45 },
+            { name: "Packaging Unit B", value: 65 }
+          ]}
+          energyUsage={120}
+          temperature={75}
+          historicalData={[
+            { time: "09:00", throughput: 70, efficiency: 80, energy: 110 },
+            { time: "10:00", throughput: 75, efficiency: 85, energy: 120 },
+            { time: "11:00", throughput: 73, efficiency: 82, energy: 115 }
+          ]}
+        />
       </div>
       <div className="flex-1" ref={reactFlowWrapper}>
         <ReactFlow
