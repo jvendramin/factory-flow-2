@@ -111,6 +111,11 @@
   @apply bg-card rounded-xl border border-border shadow-sm p-6;
 }
 
+/* Main content area styling */
+.main-content {
+  @apply rounded-tl-xl rounded-bl-xl shadow-md;
+}
+
 /* Custom styles for React Flow components */
 .transit-glow-effect {
   filter: drop-shadow(0 0 4px hsl(var(--primary)));

@@ -1,197 +1,190 @@
-
-import { useEffect, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Node, Edge } from "reactflow";
+import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { ArrowUpRight, ArrowDownRight, Clock, Activity, Zap, Thermometer } from "lucide-react";
 
 interface LiveStatsPanelProps {
-  nodes: Node[];
-  edges: Edge[];
+  isSimulating: boolean;
+  simulationTime: number;
+  throughput: number;
+  efficiency: number;
+  bottlenecks: { name: string; value: number }[];
+  energyUsage: number;
+  temperature: number;
+  historicalData: {
+    time: string;
+    throughput: number;
+    efficiency: number;
+    energy: number;
+  }[];
 }
 
-interface SystemStats {
-  totalCycleTime: number;
-  estimatedThroughput: number;
-  bottleneckName: string | null;
-  bottleneckCycleTime: number;
-  activeSimulation: boolean;
-  activeNodes: number;
-  totalTransitTime: number;
-}
-
-const LiveStatsPanel = ({
-  nodes,
-  edges
-}: LiveStatsPanelProps) => {
-  const [stats, setStats] = useState<SystemStats>({
-    totalCycleTime: 0,
-    estimatedThroughput: 0,
-    bottleneckName: null,
-    bottleneckCycleTime: 0,
-    activeSimulation: false,
-    activeNodes: 0,
-    totalTransitTime: 0
-  });
-
-  useEffect(() => {
-    if (nodes.length === 0) return;
-
-    // Calculate active simulation stats
-    const activeNodes = nodes.filter(node => node.data?.active).length;
-    const activeSimulation = activeNodes > 0;
-    
-    // Calculate total transit time
-    const totalTransitTime = edges.reduce((total, edge) => {
-      return total + (edge.data?.transitTime || 0);
-    }, 0);
-
-    // Build a graph representation
-    const graph = new Map<string, string[]>();
-    const transitTimes = new Map<string, number>();
-    edges.forEach(edge => {
-      const sourceNode = edge.source;
-      const targetNode = edge.target;
-      if (!graph.has(sourceNode)) {
-        graph.set(sourceNode, []);
-      }
-      graph.get(sourceNode)?.push(targetNode);
-
-      // Store transit times
-      const edgeId = `${sourceNode}-${targetNode}`;
-      transitTimes.set(edgeId, edge.data?.transitTime || 0);
-    });
-
-    // Find starting nodes (no incoming edges)
-    const allTargets = new Set(edges.map(e => e.target));
-    const startNodes = nodes.filter(n => !allTargets.has(n.id)).map(n => n.id);
-    if (startNodes.length === 0 && nodes.length > 0) {
-      // If no clear start, use the first node
-      startNodes.push(nodes[0].id);
-    }
-
-    // Calculate the longest path through the system (critical path)
-    let maxPathTime = 0;
-    let bottleneckNode: Node | null = null;
-    const findLongestPath = (nodeId: string, currentTime = 0, visited = new Set<string>()) => {
-      if (visited.has(nodeId)) return currentTime;
-      visited.add(nodeId);
-      const node = nodes.find(n => n.id === nodeId);
-      if (!node) return currentTime;
-      const nodeCycleTime = node.data?.cycleTime || 0;
-      const nodeMaxCapacity = node.data?.maxCapacity || 1;
-      // Adjust cycle time based on concurrent capacity
-      const adjustedCycleTime = nodeMaxCapacity > 1 ? nodeCycleTime / nodeMaxCapacity : nodeCycleTime;
-
-      // Update bottleneck if this is the slowest node so far
-      if (adjustedCycleTime > (bottleneckNode?.data?.cycleTime || 0)) {
-        bottleneckNode = node;
-      }
-
-      // Add this node's time to the path
-      const newTime = currentTime + adjustedCycleTime;
-
-      // If no next nodes, return current path time
-      const nextNodes = graph.get(nodeId) || [];
-      if (nextNodes.length === 0) return newTime;
-
-      // Find the longest path from here
-      let maxNextTime = 0;
-      for (const nextNodeId of nextNodes) {
-        const edgeId = `${nodeId}-${nextNodeId}`;
-        const transitTime = transitTimes.get(edgeId) || 0;
-        const nextPathTime = findLongestPath(nextNodeId, newTime + transitTime, new Set(visited));
-        maxNextTime = Math.max(maxNextTime, nextPathTime);
-      }
-      return maxNextTime;
-    };
-
-    // Calculate longest path from each starting node
-    for (const startNode of startNodes) {
-      const pathTime = findLongestPath(startNode);
-      maxPathTime = Math.max(maxPathTime, pathTime);
-    }
-
-    // Calculate estimated throughput based on bottleneck
-    let throughput = 0;
-    if (bottleneckNode) {
-      const bottleneckCycleTime = bottleneckNode.data?.cycleTime || 0;
-      const bottleneckMaxCapacity = bottleneckNode.data?.maxCapacity || 1;
-
-      // Adjust cycle time for concurrent capacity
-      const adjustedBottleneckTime = bottleneckMaxCapacity > 1 ? bottleneckCycleTime / bottleneckMaxCapacity : bottleneckCycleTime;
-      if (adjustedBottleneckTime > 0) {
-        // Units per hour = (3600 seconds per hour / cycle time) * concurrent capacity
-        throughput = Math.floor(3600 / adjustedBottleneckTime);
-      }
-      setStats({
-        totalCycleTime: maxPathTime,
-        estimatedThroughput: throughput,
-        bottleneckName: bottleneckNode?.data?.name || null,
-        bottleneckCycleTime: adjustedBottleneckTime,
-        activeSimulation,
-        activeNodes,
-        totalTransitTime
-      });
-    } else {
-      setStats({
-        totalCycleTime: maxPathTime,
-        estimatedThroughput: 0,
-        bottleneckName: null,
-        bottleneckCycleTime: 0,
-        activeSimulation,
-        activeNodes,
-        totalTransitTime
-      });
-    }
-  }, [nodes, edges]);
+const LiveStatsPanel: React.FC<LiveStatsPanelProps> = ({
+  isSimulating,
+  simulationTime,
+  throughput,
+  efficiency,
+  bottlenecks,
+  energyUsage,
+  temperature,
+  historicalData,
+}) => {
+  // Format simulation time (seconds to MM:SS)
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
 
   return (
-    <Card className="mt-4">
-      <CardContent className="pt-4 w-full">
-        <h3 className="text-sm font-medium mb-3 flex items-center">
-          Live System Stats
-          {stats.activeSimulation && (
-            <span className="ml-2 h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
-          )}
-        </h3>
-        
-        <div className="grid grid-cols-2 gap-y-3 text-sm">
-          <div className="flex flex-col">
-            <span className="text-xs text-muted-foreground">Total Cycle Time</span>
-            <span className="font-medium">{stats.totalCycleTime.toFixed(1)}s</span>
-          </div>
-          
-          <div className="flex flex-col">
-            <span className="text-xs text-muted-foreground">Est. Throughput</span>
-            <span className="font-medium">{stats.estimatedThroughput} units/hr</span>
-          </div>
-          
-          <div className="flex flex-col">
-            <span className="text-xs text-muted-foreground">Total Transit Time</span>
-            <span className="font-medium">{stats.totalTransitTime.toFixed(1)}s</span>
-          </div>
-          
-          {stats.activeSimulation && (
-            <div className="flex flex-col">
-              <span className="text-xs text-muted-foreground">Active Nodes</span>
-              <span className="font-medium">{stats.activeNodes} / {nodes.length}</span>
-            </div>
-          )}
-          
-          {stats.bottleneckName && (
-            <div className="col-span-2 flex flex-col">
-              <span className="text-xs text-muted-foreground">Bottleneck</span>
-              <span className="font-medium text-destructive">{stats.bottleneckName} ({stats.bottleneckCycleTime.toFixed(1)}s)</span>
-              <Progress 
-                value={100} 
-                className="h-1.5 mt-1" 
-                indicatorClassName="bg-destructive" 
-              />
-            </div>
-          )}
+    <div className="space-y-4 p-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-medium">Live Statistics</h3>
+        <div className="flex items-center gap-1 text-xs">
+          <Clock size={14} className="text-muted-foreground" />
+          <span className="text-muted-foreground">{formatTime(simulationTime)}</span>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <Card>
+          <CardContent className="p-3">
+            <div className="flex flex-col">
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Activity size={12} /> Throughput
+              </span>
+              <div className="flex items-end justify-between">
+                <span className="text-xl font-semibold">{throughput}</span>
+                <span className="text-xs text-green-500 flex items-center">
+                  <ArrowUpRight size={12} /> 12%
+                </span>
+              </div>
+              <Progress value={throughput} className="h-1 mt-2" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-3">
+            <div className="flex flex-col">
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Zap size={12} /> Efficiency
+              </span>
+              <div className="flex items-end justify-between">
+                <span className="text-xl font-semibold">{efficiency}%</span>
+                <span className="text-xs text-red-500 flex items-center">
+                  <ArrowDownRight size={12} /> 3%
+                </span>
+              </div>
+              <Progress value={efficiency} className="h-1 mt-2" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-3">
+            <div className="flex flex-col">
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Zap size={12} /> Energy
+              </span>
+              <div className="flex items-end justify-between">
+                <span className="text-xl font-semibold">{energyUsage} kW</span>
+                <span className="text-xs text-green-500 flex items-center">
+                  <ArrowUpRight size={12} /> 5%
+                </span>
+              </div>
+              <Progress value={energyUsage / 10} className="h-1 mt-2" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-3">
+            <div className="flex flex-col">
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Thermometer size={12} /> Temp
+              </span>
+              <div className="flex items-end justify-between">
+                <span className="text-xl font-semibold">{temperature}°C</span>
+                <span className="text-xs text-red-500 flex items-center">
+                  <ArrowUpRight size={12} /> 2%
+                </span>
+              </div>
+              <Progress value={temperature / 1.5} className="h-1 mt-2" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader className="p-3 pb-0">
+          <CardTitle className="text-sm font-medium">Performance Metrics</CardTitle>
+        </CardHeader>
+        <CardContent className="p-3">
+          <Tabs defaultValue="throughput">
+            <TabsList className="grid w-full grid-cols-3 h-7">
+              <TabsTrigger value="throughput" className="text-xs">Throughput</TabsTrigger>
+              <TabsTrigger value="efficiency" className="text-xs">Efficiency</TabsTrigger>
+              <TabsTrigger value="energy" className="text-xs">Energy</TabsTrigger>
+            </TabsList>
+            <TabsContent value="throughput" className="pt-2">
+              <ResponsiveContainer width="100%" height={120}>
+                <LineChart data={historicalData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.1)" />
+                  <XAxis dataKey="time" tick={{ fontSize: 10 }} stroke="rgba(255,255,255,0.3)" />
+                  <YAxis tick={{ fontSize: 10 }} stroke="rgba(255,255,255,0.3)" />
+                  <Tooltip contentStyle={{ backgroundColor: "rgba(0,0,0,0.8)", border: "none" }} />
+                  <Line type="monotone" dataKey="throughput" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </TabsContent>
+            <TabsContent value="efficiency" className="pt-2">
+              <ResponsiveContainer width="100%" height={120}>
+                <LineChart data={historicalData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.1)" />
+                  <XAxis dataKey="time" tick={{ fontSize: 10 }} stroke="rgba(255,255,255,0.3)" />
+                  <YAxis tick={{ fontSize: 10 }} stroke="rgba(255,255,255,0.3)" />
+                  <Tooltip contentStyle={{ backgroundColor: "rgba(0,0,0,0.8)", border: "none" }} />
+                  <Line type="monotone" dataKey="efficiency" stroke="#10b981" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </TabsContent>
+            <TabsContent value="energy" className="pt-2">
+              <ResponsiveContainer width="100%" height={120}>
+                <LineChart data={historicalData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.1)" />
+                  <XAxis dataKey="time" tick={{ fontSize: 10 }} stroke="rgba(255,255,255,0.3)" />
+                  <YAxis tick={{ fontSize: 10 }} stroke="rgba(255,255,255,0.3)" />
+                  <Tooltip contentStyle={{ backgroundColor: "rgba(0,0,0,0.8)", border: "none" }} />
+                  <Line type="monotone" dataKey="energy" stroke="#f59e0b" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="p-3 pb-0">
+          <CardTitle className="text-sm font-medium">Bottlenecks</CardTitle>
+        </CardHeader>
+        <CardContent className="p-3">
+          <div className="space-y-2">
+            {bottlenecks.map((bottleneck, index) => (
+              <div key={index} className="space-y-1">
+                <div className="flex justify-between text-xs">
+                  <span>{bottleneck.name}</span>
+                  <span>{bottleneck.value}%</span>
+                </div>
+                <Progress value={bottleneck.value} className="h-1" />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
