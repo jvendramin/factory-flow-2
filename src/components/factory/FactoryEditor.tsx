@@ -108,7 +108,7 @@ const FactoryEditorContent = ({
     handleAddFromConnection(equipment, nodes);
   }, [handleAddFromConnection, nodes]);
   return <div className="w-full h-full flex flex-col">
-      <div className="">
+      <div className="border-b border-border mt-2">
         <CollapsibleStatsPanel isSimulating={isSimulating} simulationTime={0} throughput={75} efficiency={85} energyUsage={120} temperature={75} />
       </div>
       <div className="flex-1" ref={reactFlowWrapper}>
