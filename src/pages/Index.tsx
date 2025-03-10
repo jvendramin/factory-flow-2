@@ -28,9 +28,7 @@ const Index = () => {
       {/* Factory Editor */}
       <div className="flex-1 relative">
         <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => setIsSimulating(!isSimulating)} className={isSimulating ? "text-primary" : ""}>
-            {isSimulating ? "Stop Simulation" : "Start Simulation"}
-          </Button>
+          
           
           <Popover>
             <PopoverTrigger asChild>
