@@ -122,7 +122,7 @@
 
 /* Main content area styling */
 .main-content {
-  @apply rounded-tl-xl rounded-bl-xl shadow-md;
+  @apply rounded-l-xl shadow-md;
 }
 
 /* Custom styles for React Flow components */

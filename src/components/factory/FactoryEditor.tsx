@@ -1,3 +1,4 @@
+
 import { useCallback, useRef, useState, useEffect } from 'react';
 import ReactFlow, {
   Background,
@@ -14,7 +15,7 @@ import ReactFlow, {
   ReactFlowProvider,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import LiveStatsPanel from './LiveStatsPanel';
+import CollapsibleStatsPanel from './CollapsibleStatsPanel';
 import EquipmentNode from './nodes/EquipmentNode';
 import ConfigurableEdge from './edges/ConfigurableEdge';
 import ConnectionAlert from './ConnectionAlert';
@@ -134,23 +135,14 @@ const FactoryEditorContent = ({
 
   return (
     <div className="w-full h-full flex flex-col">
-      <div className="px-4 pt-2 flex justify-between items-center">
-        <LiveStatsPanel 
+      <div className="px-4 pt-2">
+        <CollapsibleStatsPanel 
           isSimulating={isSimulating}
           simulationTime={0}
           throughput={75}
           efficiency={85}
-          bottlenecks={[
-            { name: "Assembly Line A", value: 45 },
-            { name: "Packaging Unit B", value: 65 }
-          ]}
           energyUsage={120}
           temperature={75}
-          historicalData={[
-            { time: "09:00", throughput: 70, efficiency: 80, energy: 110 },
-            { time: "10:00", throughput: 75, efficiency: 85, energy: 120 },
-            { time: "11:00", throughput: 73, efficiency: 82, energy: 115 }
-          ]}
         />
       </div>
       <div className="flex-1" ref={reactFlowWrapper}>
