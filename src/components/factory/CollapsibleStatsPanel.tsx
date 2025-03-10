@@ -45,7 +45,7 @@ const CollapsibleStatsPanel: React.FC<CollapsibleStatsPanelProps> = ({
       </div>
       
       <CollapsibleContent>
-        <div className="px-4 pt-4 pb-2">
+        <div className="px-4 pt-4 pb-3">
           <div className="grid grid-cols-4 gap-2">
             <Card>
               <div className="p-2">
