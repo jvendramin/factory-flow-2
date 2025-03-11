@@ -62,7 +62,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
               <span className="ml-2 text-sm font-medium">Mark Bannert</span>
             </div>
             <button onClick={toggleTheme} className="text-sidebar-foreground/70 hover:text-sidebar-foreground">
-              <SunMoon size={18} />
+              <SunMoon size={18} className="mr-1" />
             </button>
           </div>
         </SidebarFooter>
