@@ -1,19 +1,35 @@
+
 import React, { useState, useEffect } from "react";
-import { Sidebar, SidebarHeader, SidebarSection, SidebarItem, SidebarFooter, useSidebar } from "@/components/ui/collapsible-sidebar";
-import { LayoutGrid, Settings, Activity, Box, Shield, Code, Zap, CreditCard, Archive, SunMoon } from "lucide-react";
+import { 
+  Sidebar, 
+  SidebarHeader, 
+  SidebarSection, 
+  SidebarItem,
+  SidebarFooter,
+  useSidebar 
+} from "@/components/ui/collapsible-sidebar";
+import { 
+  LayoutGrid, 
+  Settings, 
+  Activity, 
+  Box, 
+  Shield, 
+  Code, 
+  Zap, 
+  CreditCard, 
+  Archive,
+  SunMoon
+} from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useTheme } from "@/components/theme/theme-provider";
+
 interface AppLayoutProps {
   children: React.ReactNode;
 }
-const AppLayout: React.FC<AppLayoutProps> = ({
-  children
-}) => {
+
+const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const location = useLocation();
-  const {
-    theme,
-    setTheme
-  } = useTheme();
+  const { theme, setTheme } = useTheme();
   const [isHovered, setIsHovered] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(true);
 
@@ -22,12 +38,20 @@ const AppLayout: React.FC<AppLayoutProps> = ({
     const timer = setTimeout(() => {
       setIsCollapsed(!isHovered);
     }, isHovered ? 100 : 400);
+    
     return () => clearTimeout(timer);
   }, [isHovered]);
+
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");
   };
-  return <div className="flex h-screen w-full overflow-hidden bg-sidebar" onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)}>
+
+  return (
+    <div 
+      className="flex h-screen w-full overflow-hidden bg-sidebar"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       <Sidebar collapsed={isCollapsed}>
         <SidebarHeader>
           <div className="flex items-center">
@@ -40,7 +64,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({
         
         <div className="flex flex-col h-[calc(100%-8rem)] overflow-hidden">
           <SidebarSection title="GENERAL">
-            <SidebarItem icon={LayoutGrid} active={location.pathname === "/"}>
+            <SidebarItem 
+              icon={LayoutGrid} 
+              active={location.pathname === "/"} 
+            >
               Dashboard
             </SidebarItem>
             <SidebarItem icon={Activity}>Transactions</SidebarItem>
@@ -61,16 +88,21 @@ const AppLayout: React.FC<AppLayoutProps> = ({
               </div>
               <span className="ml-2 text-sm font-medium">Mark Bannert</span>
             </div>
-            <button onClick={toggleTheme} className="text-sidebar-foreground/70 hover:text-sidebar-foreground">
+            <button 
+              onClick={toggleTheme}
+              className="text-sidebar-foreground/70 hover:text-sidebar-foreground"
+            >
               <SunMoon size={18} />
             </button>
           </div>
         </SidebarFooter>
       </Sidebar>
       
-      <main className="flex-1 bg-background rounded-l-3xl shadow-md overflow-hidden mt-4 ml-4 mb-4">
+      <main className="flex-1 bg-background rounded-l-3xl shadow-xl overflow-hidden p-8 m-4 ml-0 my-4">
         {children}
       </main>
-    </div>;
+    </div>
+  );
 };
+
 export default AppLayout;
