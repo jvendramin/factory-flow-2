@@ -5,7 +5,8 @@ import {
   SidebarHeader, 
   SidebarSection, 
   SidebarItem,
-  SidebarFooter 
+  SidebarFooter,
+  useSidebar 
 } from "@/components/ui/collapsible-sidebar";
 import { 
   LayoutGrid, 
@@ -97,7 +98,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         </SidebarFooter>
       </Sidebar>
       
-      <main className="flex-1 bg-background rounded-l-3xl shadow-xl overflow-hidden p-6 m-4 ml-0">
+      <main className="flex-1 bg-background rounded-l-3xl shadow-xl overflow-hidden p-8 m-4 ml-0 my-4">
         {children}
       </main>
     </div>

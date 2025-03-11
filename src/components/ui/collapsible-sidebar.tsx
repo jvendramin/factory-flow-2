@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 type SidebarContextType = {
   collapsed: boolean;
+  setCollapsed?: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 const SidebarContext = createContext<SidebarContextType>({
@@ -12,6 +13,17 @@ const SidebarContext = createContext<SidebarContextType>({
 });
 
 export const useSidebar = () => useContext(SidebarContext);
+
+// Add the SidebarProvider component that's missing
+export const SidebarProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [collapsed, setCollapsed] = useState(true);
+
+  return (
+    <SidebarContext.Provider value={{ collapsed, setCollapsed }}>
+      {children}
+    </SidebarContext.Provider>
+  );
+};
 
 interface SidebarProps {
   children: ReactNode;
