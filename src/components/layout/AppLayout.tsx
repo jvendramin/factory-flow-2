@@ -47,22 +47,46 @@ const AppLayout: React.FC<AppLayoutProps> = ({
         
         <div className="flex flex-col h-[calc(100%-8rem)] overflow-hidden ml-2">
           <SidebarSection>
-            <SidebarItem icon={LayoutGrid} active={location.pathname === "/"} as={Link} to="/">
+            <SidebarItem 
+              icon={LayoutGrid} 
+              active={location.pathname === "/"} 
+              onClick={() => window.location.href = "/"}
+            >
               Home
             </SidebarItem>
-            <SidebarItem icon={Factory} active={location.pathname === "/simulation"} as={Link} to="/simulation">
+            <SidebarItem 
+              icon={Factory} 
+              active={location.pathname === "/simulation"} 
+              onClick={() => window.location.href = "/simulation"}
+            >
               Simulation
             </SidebarItem>
-            <SidebarItem icon={Wallet} active={location.pathname === "/financial"} as={Link} to="/financial">
+            <SidebarItem 
+              icon={Wallet} 
+              active={location.pathname === "/financial"} 
+              onClick={() => window.location.href = "/financial"}
+            >
               Financial
             </SidebarItem>
-            <SidebarItem icon={Building} active={location.pathname === "/business"} as={Link} to="/business">
+            <SidebarItem 
+              icon={Building} 
+              active={location.pathname === "/business"} 
+              onClick={() => window.location.href = "/business"}
+            >
               My Business
             </SidebarItem>
-            <SidebarItem icon={GraduationCap} active={location.pathname === "/university"} as={Link} to="/university">
+            <SidebarItem 
+              icon={GraduationCap} 
+              active={location.pathname === "/university"} 
+              onClick={() => window.location.href = "/university"}
+            >
               University
             </SidebarItem>
-            <SidebarItem icon={Store} active={location.pathname === "/marketplace"} as={Link} to="/marketplace">
+            <SidebarItem 
+              icon={Store} 
+              active={location.pathname === "/marketplace"} 
+              onClick={() => window.location.href = "/marketplace"}
+            >
               Marketplace
             </SidebarItem>
           </SidebarSection>
