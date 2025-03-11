@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { Sidebar, SidebarHeader, SidebarSection, SidebarItem, SidebarFooter, useSidebar } from "@/components/ui/collapsible-sidebar";
 import { LayoutGrid, Settings, Box, ChevronsUpDown, Wallet, Building, GraduationCap, Factory, SunMoon, LogOut, Store } from "lucide-react";
-import { useLocation, Link } from "react-router-dom";
+import { useLocation, Link, useNavigate } from "react-router-dom";
 import { useTheme } from "@/components/theme/theme-provider";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
   children
 }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const {
     theme,
     setTheme
@@ -34,6 +35,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({
     setTheme(theme === "dark" ? "light" : "dark");
   };
 
+  const handleNavigation = (path: string) => {
+    navigate(path);
+  };
+
   return <div className="flex h-screen w-full overflow-hidden bg-sidebar" onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)}>
       <Sidebar collapsed={isCollapsed}>
         <SidebarHeader>
@@ -50,42 +55,42 @@ const AppLayout: React.FC<AppLayoutProps> = ({
             <SidebarItem 
               icon={LayoutGrid} 
               active={location.pathname === "/"} 
-              onClick={() => window.location.href = "/"}
+              onClick={() => handleNavigation("/")}
             >
               Home
             </SidebarItem>
             <SidebarItem 
               icon={Factory} 
               active={location.pathname === "/simulation"} 
-              onClick={() => window.location.href = "/simulation"}
+              onClick={() => handleNavigation("/simulation")}
             >
               Simulation
             </SidebarItem>
             <SidebarItem 
               icon={Wallet} 
               active={location.pathname === "/financial"} 
-              onClick={() => window.location.href = "/financial"}
+              onClick={() => handleNavigation("/financial")}
             >
               Financial
             </SidebarItem>
             <SidebarItem 
               icon={Building} 
               active={location.pathname === "/business"} 
-              onClick={() => window.location.href = "/business"}
+              onClick={() => handleNavigation("/business")}
             >
               My Business
             </SidebarItem>
             <SidebarItem 
               icon={GraduationCap} 
               active={location.pathname === "/university"} 
-              onClick={() => window.location.href = "/university"}
+              onClick={() => handleNavigation("/university")}
             >
               University
             </SidebarItem>
             <SidebarItem 
               icon={Store} 
               active={location.pathname === "/marketplace"} 
-              onClick={() => window.location.href = "/marketplace"}
+              onClick={() => handleNavigation("/marketplace")}
             >
               Marketplace
             </SidebarItem>
