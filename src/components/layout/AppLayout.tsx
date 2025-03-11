@@ -1,11 +1,10 @@
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Sidebar, 
   SidebarHeader, 
   SidebarSection, 
   SidebarItem,
-  SidebarTrigger,
   SidebarFooter 
 } from "@/components/ui/collapsible-sidebar";
 import { 
@@ -30,14 +29,29 @@ interface AppLayoutProps {
 const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const location = useLocation();
   const { theme, setTheme } = useTheme();
+  const [isHovered, setIsHovered] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
+
+  // Add hover delay for better UX
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsCollapsed(!isHovered);
+    }, isHovered ? 100 : 400);
+    
+    return () => clearTimeout(timer);
+  }, [isHovered]);
 
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");
   };
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-sidebar">
-      <Sidebar>
+    <div 
+      className="flex h-screen w-full overflow-hidden bg-sidebar"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <Sidebar collapsed={isCollapsed}>
         <SidebarHeader>
           <div className="flex items-center">
             <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10">
@@ -47,7 +61,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           </div>
         </SidebarHeader>
         
-        <div className="flex flex-col h-[calc(100%-8rem)]">
+        <div className="flex flex-col h-[calc(100%-8rem)] overflow-hidden">
           <SidebarSection title="GENERAL">
             <SidebarItem 
               icon={LayoutGrid} 
@@ -83,9 +97,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         </SidebarFooter>
       </Sidebar>
       
-      <SidebarTrigger className="top-4 left-[17rem] z-20" />
-      
-      <main className="flex-1 bg-background rounded-l-3xl shadow-xl overflow-hidden">
+      <main className="flex-1 bg-background rounded-l-3xl shadow-xl overflow-hidden p-6 m-4 ml-0">
         {children}
       </main>
     </div>

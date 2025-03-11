@@ -96,7 +96,7 @@
 
 /* Custom styles for sidebar */
 .sidebar-item {
-  @apply flex items-center gap-3 px-3 py-2 rounded-md transition-colors duration-200 text-sm font-medium;
+  @apply flex items-center rounded-md transition-colors duration-200 text-sm font-medium h-10;
 }
 
 .sidebar-item-active {
@@ -132,8 +132,8 @@
 
 /* Rounded edge styling */
 .rounded-edge {
-  border-top-left-radius: 24px;
-  border-bottom-left-radius: 24px;
+  border-top-left-radius: 1.5rem;
+  border-bottom-left-radius: 1.5rem;
 }
 
 /* Custom styles for React Flow components */
