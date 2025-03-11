@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from "react";
 import { Sidebar, SidebarHeader, SidebarSection, SidebarItem, SidebarFooter, useSidebar } from "@/components/ui/collapsible-sidebar";
-import { LayoutGrid, Settings, Box, ChevronsUpDown, Wallet, Building, GraduationCap, Factory, SunMoon, LogOut } from "lucide-react";
-import { useLocation } from "react-router-dom";
+import { LayoutGrid, Settings, Box, ChevronsUpDown, Wallet, Building, GraduationCap, Factory, SunMoon, LogOut, Store } from "lucide-react";
+import { useLocation, Link } from "react-router-dom";
 import { useTheme } from "@/components/theme/theme-provider";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -36,7 +37,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
   return <div className="flex h-screen w-full overflow-hidden bg-sidebar" onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)}>
       <Sidebar collapsed={isCollapsed}>
         <SidebarHeader>
-          <div className="flex items-center p-2">
+          <div className="flex items-center p-4">
             <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10">
               <Box size={20} className="text-primary" />
             </div>
@@ -46,13 +47,24 @@ const AppLayout: React.FC<AppLayoutProps> = ({
         
         <div className="flex flex-col h-[calc(100%-8rem)] overflow-hidden ml-2">
           <SidebarSection>
-            <SidebarItem icon={LayoutGrid} active={location.pathname === "/"}>
+            <SidebarItem icon={LayoutGrid} active={location.pathname === "/"} as={Link} to="/">
               Home
             </SidebarItem>
-            <SidebarItem icon={Factory}>Simulation</SidebarItem>
-            <SidebarItem icon={Wallet}>Financial</SidebarItem>
-            <SidebarItem icon={Building}>My Business</SidebarItem>
-            <SidebarItem icon={GraduationCap}>University</SidebarItem>
+            <SidebarItem icon={Factory} active={location.pathname === "/simulation"} as={Link} to="/simulation">
+              Simulation
+            </SidebarItem>
+            <SidebarItem icon={Wallet} active={location.pathname === "/financial"} as={Link} to="/financial">
+              Financial
+            </SidebarItem>
+            <SidebarItem icon={Building} active={location.pathname === "/business"} as={Link} to="/business">
+              My Business
+            </SidebarItem>
+            <SidebarItem icon={GraduationCap} active={location.pathname === "/university"} as={Link} to="/university">
+              University
+            </SidebarItem>
+            <SidebarItem icon={Store} active={location.pathname === "/marketplace"} as={Link} to="/marketplace">
+              Marketplace
+            </SidebarItem>
           </SidebarSection>
         </div>
         
@@ -91,7 +103,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
         </SidebarFooter>
       </Sidebar>
       
-      <main className="flex-1 bg-background rounded-l-3xl shadow-md overflow-hidden mt-4 mb-4 ml-2 p-8 border border-gray-300/20 dark:border-gray-600/20">
+      <main className="flex-1 bg-background rounded-l-3xl shadow-md overflow-hidden mt-4 mb-4 ml-2 border border-gray-300/20 dark:border-gray-600/20">
         {children}
       </main>
     </div>;
