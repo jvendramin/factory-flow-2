@@ -38,7 +38,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
           </div>
         </SidebarHeader>
         
-        <div className="flex flex-col h-[calc(100%-8rem)] overflow-hidden">
+        <div className="flex flex-col h-[calc(100%-8rem)] overflow-hidden ml-2">
           <SidebarSection title="GENERAL">
             <SidebarItem icon={LayoutGrid} active={location.pathname === "/"}>
               Dashboard
