@@ -68,7 +68,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
         </SidebarFooter>
       </Sidebar>
       
-      <main className="flex-1 bg-background rounded-l-3xl shadow-md overflow-hidden mt-4 ml-2 mb-4 border border-gray-200 dark:border-gray-700 mx-0 my-0 px-0 py-0">
+      <main className="flex-1 bg-background rounded-l-3xl shadow-md overflow-hidden mt-4 ml-2 mb-4 border border-gray-300/20 dark:border-gray-600/20 mx-0 my-0 px-0 py-0">
         {children}
       </main>
     </div>;
