@@ -390,5 +390,8 @@ const SimulationPanel = ({
         </div>
       </ScrollArea>
     </div>
- 
+  );
+};
+
+export default SimulationPanel;
 
