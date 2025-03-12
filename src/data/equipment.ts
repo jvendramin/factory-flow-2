@@ -10,9 +10,10 @@ export const equipmentLibrary: Equipment[] = [
     cycleTime: 180,
     throughput: 20,
     dimensions: { width: 200, height: 150 },
-    maintenanceInterval: 168, // 1 week
+    maintenanceInterval: 168,
     setupTime: 45,
-    energy: 15 // kW
+    energy: 15,
+    ownership: "owned"
   },
   {
     id: "injection-molder",
@@ -22,9 +23,10 @@ export const equipmentLibrary: Equipment[] = [
     cycleTime: 25,
     throughput: 144,
     dimensions: { width: 250, height: 200 },
-    maintenanceInterval: 336, // 2 weeks
+    maintenanceInterval: 336,
     setupTime: 120,
-    energy: 35 // kW
+    energy: 35,
+    ownership: "owned"
   },
   {
     id: "assembly-station",
@@ -34,9 +36,10 @@ export const equipmentLibrary: Equipment[] = [
     cycleTime: 90,
     throughput: 40,
     dimensions: { width: 150, height: 100 },
-    maintenanceInterval: 720, // 1 month
+    maintenanceInterval: 720,
     setupTime: 15,
-    maxCapacity: 1
+    maxCapacity: 1,
+    ownership: "owned"
   },
   {
     id: "robot-arm",
@@ -48,7 +51,8 @@ export const equipmentLibrary: Equipment[] = [
     dimensions: { width: 100, height: 100 },
     maintenanceInterval: 500,
     setupTime: 60,
-    energy: 5 // kW
+    energy: 5,
+    ownership: "owned"
   },
   {
     id: "conveyor",
@@ -59,7 +63,8 @@ export const equipmentLibrary: Equipment[] = [
     throughput: 720,
     dimensions: { width: 300, height: 50 },
     maintenanceInterval: 1000,
-    energy: 2 // kW
+    energy: 2,
+    ownership: "owned"
   },
   {
     id: "packaging",
@@ -71,7 +76,8 @@ export const equipmentLibrary: Equipment[] = [
     dimensions: { width: 200, height: 150 },
     maintenanceInterval: 400,
     setupTime: 30,
-    energy: 8 // kW
+    energy: 8,
+    ownership: "owned"
   },
   {
     id: "inspection",
@@ -82,7 +88,8 @@ export const equipmentLibrary: Equipment[] = [
     throughput: 360,
     dimensions: { width: 120, height: 80 },
     maintenanceInterval: 720,
-    energy: 3 // kW
+    energy: 3,
+    ownership: "owned"
   },
   {
     id: "warehouse-rack",
@@ -92,6 +99,7 @@ export const equipmentLibrary: Equipment[] = [
     cycleTime: 0,
     throughput: 0,
     dimensions: { width: 150, height: 300 },
-    maxCapacity: 500
+    maxCapacity: 500,
+    ownership: "owned"
   }
 ];

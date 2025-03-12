@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
@@ -7,7 +6,11 @@ import { equipmentLibrary } from "@/data/equipment";
 import EquipmentCard from "./EquipmentCard";
 import { Equipment } from '@/types/equipment';
 
-const EquipmentPanel = () => {
+interface EquipmentPanelProps {
+  addProposedMode?: boolean;
+}
+
+const EquipmentPanel = ({ addProposedMode }: EquipmentPanelProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [equipmentItems, setEquipmentItems] = useState(equipmentLibrary);
   
