@@ -61,15 +61,11 @@ export function SidebarHeader({
   const { collapsed } = useSidebar();
   
   return <div className={cn(
-    "flex h-14 items-center", 
-    collapsed ? "justify-center px-2" : "justify-between px-4", 
+    "flex h-14 items-center transition-all duration-300", 
+    collapsed ? "justify-center" : "justify-between px-4", 
     className
   )}>
-    {collapsed ? (
-      <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10">
-        <Box size={20} className="text-primary" />
-      </div>
-    ) : children}
+    {children}
   </div>;
 }
 
@@ -110,13 +106,13 @@ export function SidebarItem({
   const { collapsed } = useSidebar();
   
   return <button onClick={onClick} className={cn(
-    "sidebar-item w-full", 
+    "sidebar-item w-full transition-all duration-300", 
     active ? "sidebar-item-active" : "sidebar-item-inactive",
     collapsed ? "justify-center px-0" : "px-4",
     className
   )}>
     <Icon size={18} />
-    {!collapsed && <span className="ml-2">{children}</span>}
+    {!collapsed && <span className="ml-2 transition-opacity duration-300">{children}</span>}
   </button>;
 }
 
@@ -142,15 +138,11 @@ export function SidebarFooter({
   const { collapsed } = useSidebar();
   
   return <div className={cn(
-    "mt-auto", 
+    "mt-auto transition-all duration-300", 
     collapsed ? "p-2 flex justify-center" : "p-4", 
     className
   )}>
-    {collapsed ? (
-      <button className="h-8 w-8 rounded-full bg-sidebar-accent flex items-center justify-center">
-        <span className="text-xs font-medium">MB</span>
-      </button>
-    ) : children}
+    {children}
   </div>;
 }
 
