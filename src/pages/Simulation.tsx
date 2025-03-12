@@ -1,10 +1,9 @@
-
 import React from "react";
 import FactoryEditor from "@/components/factory/FactoryEditor";
 import EquipmentPanel from "@/components/factory/EquipmentPanel";
 import SimulationPanel from "@/components/factory/SimulationPanel";
 import { Button } from "@/components/ui/button";
-import { Share2 } from "lucide-react";
+import { Share2, Plus } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "@/components/ui/use-toast";
 
@@ -23,15 +22,19 @@ const Simulation = () => {
   };
   
   return (
-    <div className="h-full flex">
+    <div className="h-full flex -m-6">
       {/* Left Equipment Panel */}
-      <div className="w-64 border-r border-border bg-card h-full">
-        <EquipmentPanel />
+      <div className="w-64 border-r border-border bg-card">
+        <EquipmentPanel addProposedMode />
       </div>
       
       {/* Factory Editor */}
       <div className="flex-1 relative">
         <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-1">
+            <Plus size={16} />
+            Add Equipment
+          </Button>
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className="gap-1">
@@ -54,8 +57,8 @@ const Simulation = () => {
       </div>
       
       {/* Right Simulation Panel */}
-      <div className="w-80 border-l border-border bg-card h-full">
-        <SimulationPanel isSimulating={isSimulating} setIsSimulating={setIsSimulating} simulationMode={simulationMode} setSimulationMode={setSimulationMode} currentUnitPosition={null} />
+      <div className="w-80 border-l border-border bg-card">
+        <SimulationPanel isSimulating={isSimulating} setIsSimulating={setIsSimulating} simulationMode={simulationMode} setSimulationMode={setSimulationMode} />
       </div>
     </div>
   );

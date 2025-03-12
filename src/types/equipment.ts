@@ -1,4 +1,3 @@
-
 export interface Equipment {
   id: string;
   name: string;
@@ -21,6 +20,7 @@ export interface Equipment {
   placeholder?: boolean; // whether this is a placeholder node
   groupId?: string; // unique identifier for group membership
   groupPosition?: number; // position within group for vertical alignment
+  ownership: "owned" | "proposed"; // whether this equipment is already owned or proposed
 }
 
 export interface FlowEdge {

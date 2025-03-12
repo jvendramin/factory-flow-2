@@ -10,6 +10,7 @@ import { toast } from "@/components/ui/use-toast";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
+
 interface SimulationPanelProps {
   isSimulating: boolean;
   setIsSimulating: (value: boolean) => void;
@@ -20,6 +21,7 @@ interface SimulationPanelProps {
     progress: number;
   } | null;
 }
+
 const SimulationPanel = ({
   isSimulating,
   setIsSimulating,
@@ -42,6 +44,7 @@ const SimulationPanel = ({
     utilization: number;
     bottlenecks: string[];
   } | null>(null);
+
   const handleStartSimulation = () => {
     setIsSimulating(true);
     if (simulationMode === "instant") {
@@ -98,6 +101,7 @@ const SimulationPanel = ({
       }
     }
   };
+
   const getMockSimulationResult = () => {
     return {
       throughput: 115 + Math.random() * 10,
@@ -106,43 +110,47 @@ const SimulationPanel = ({
       bottlenecks: ["Assembly Station 2", "CNC Milling Machine", "Packaging Machine"].slice(0, 1 + Math.floor(Math.random() * 2))
     };
   };
+
   const handleStopSimulation = () => {
     setIsSimulating(false);
     setRunningBatch(false);
     setCurrentBatchProgress(0);
     setSimulationResults(null);
   };
+
   const handleSimulationModeChange = (value: string) => {
     if (value === "instant" || value === "play-by-play") {
       setSimulationMode(value);
     }
   };
+
   const handleGeneratePDF = (bank: string) => {
     toast({
       title: `PDF Template Generated`,
       description: `Loan proposal template for ${bank} has been generated.`
     });
   };
-  return <div className="flex flex-col h-full">
+
+  return (
+    <div className="flex flex-col h-full">
       <div className="p-1 border-b border-border">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="px-4 flex items-center justify-between">
-          <TabsList className="gap-1 bg-transparent">
-            <TabsTrigger value="simulate" className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none">
-              
-              Simulate
-            </TabsTrigger>
-            <TabsTrigger value="tools" className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none">
-              
-              Tools
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none">
-              
-              Settings
-            </TabsTrigger>
-          </TabsList>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <div className="px-4 flex items-center justify-center">
+            <TabsList className="gap-1 bg-transparent">
+              <TabsTrigger value="simulate" className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none">
+                Simulate
+              </TabsTrigger>
+              <TabsTrigger value="tools" className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none">
+                Tools
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none">
+                Settings
+              </TabsTrigger>
+            </TabsList>
+          </div>
         </Tabs>
       </div>
-      
+
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-4">
           <Tabs value={activeTab} defaultValue="simulate">
@@ -381,6 +389,6 @@ const SimulationPanel = ({
           </Tabs>
         </div>
       </ScrollArea>
-    </div>;
-};
-export default SimulationPanel;
+    </div>
+ 
+
