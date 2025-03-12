@@ -1,15 +1,17 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
-import { PlayIcon, PauseIcon, SquareIcon, SettingsIcon, LineChartIcon, ZapIcon, TimerIcon, RocketIcon, WrenchIcon, FileIcon, BuildingIcon, FileTextIcon, SlidersIcon } from "lucide-react";
+import { PlayIcon, PauseIcon, SquareIcon, LineChartIcon, ZapIcon, TimerIcon } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/use-toast";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
+import PDFGenerator from "./PDFGenerator";
 
 interface SimulationPanelProps {
   isSimulating: boolean;
@@ -34,8 +36,6 @@ const SimulationPanel = ({
   const [runningBatch, setRunningBatch] = useState(false);
   const [currentBatchProgress, setCurrentBatchProgress] = useState(0);
   const [activeTab, setActiveTab] = useState("simulate");
-  const [selectedBank, setSelectedBank] = useState("rbc");
-  const [darkMode, setDarkMode] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [autoSave, setAutoSave] = useState(true);
   const [simulationResults, setSimulationResults] = useState<{
@@ -122,13 +122,6 @@ const SimulationPanel = ({
     if (value === "instant" || value === "play-by-play") {
       setSimulationMode(value);
     }
-  };
-
-  const handleGeneratePDF = (bank: string) => {
-    toast({
-      title: `PDF Template Generated`,
-      description: `Loan proposal template for ${bank} has been generated.`
-    });
   };
 
   return (
@@ -250,74 +243,7 @@ const SimulationPanel = ({
 
             <TabsContent value="tools" className="m-0 space-y-4">
               <Card className="p-4">
-                <h3 className="text-sm font-medium mb-3">PDF Templates</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Generate a PDF template for a bank loan proposal with pre-filled information from your factory model.
-                </p>
-                
-                <div className="space-y-3">
-                  <div className="flex items-center border rounded-md p-2 hover:bg-accent cursor-pointer" onClick={() => handleGeneratePDF("RBC")}>
-                    <BuildingIcon className="h-4 w-4 mr-2" />
-                    <div className="flex-1">
-                      <div className="text-sm font-medium">RBC Royal Bank</div>
-                      <div className="text-xs text-muted-foreground">Business loan proposal template</div>
-                    </div>
-                    <Button variant="ghost" size="sm">
-                      <FileIcon className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  
-                  <div className="flex items-center border rounded-md p-2 hover:bg-accent cursor-pointer" onClick={() => handleGeneratePDF("TD")}>
-                    <BuildingIcon className="h-4 w-4 mr-2" />
-                    <div className="flex-1">
-                      <div className="text-sm font-medium">TD Bank</div>
-                      <div className="text-xs text-muted-foreground">Equipment financing template</div>
-                    </div>
-                    <Button variant="ghost" size="sm">
-                      <FileIcon className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  
-                  <div className="flex items-center border rounded-md p-2 hover:bg-accent cursor-pointer" onClick={() => handleGeneratePDF("Scotiabank")}>
-                    <BuildingIcon className="h-4 w-4 mr-2" />
-                    <div className="flex-1">
-                      <div className="text-sm font-medium">Scotiabank</div>
-                      <div className="text-xs text-muted-foreground">Manufacturing loan template</div>
-                    </div>
-                    <Button variant="ghost" size="sm">
-                      <FileIcon className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  
-                  <div className="flex items-center border rounded-md p-2 hover:bg-accent cursor-pointer" onClick={() => handleGeneratePDF("BDC")}>
-                    <BuildingIcon className="h-4 w-4 mr-2" />
-                    <div className="flex-1">
-                      <div className="text-sm font-medium">BDC</div>
-                      <div className="text-xs text-muted-foreground">Business development loan template</div>
-                    </div>
-                    <Button variant="ghost" size="sm">
-                      <FileIcon className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  
-                  <div className="flex items-center border rounded-md p-2 hover:bg-accent cursor-pointer" onClick={() => handleGeneratePDF("CIBC")}>
-                    <BuildingIcon className="h-4 w-4 mr-2" />
-                    <div className="flex-1">
-                      <div className="text-sm font-medium">CIBC</div>
-                      <div className="text-xs text-muted-foreground">Industrial equipment loan template</div>
-                    </div>
-                    <Button variant="ghost" size="sm">
-                      <FileIcon className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-                
-                <div className="mt-4">
-                  <Button variant="outline" className="w-full">
-                    <FileTextIcon className="mr-2 h-4 w-4" />
-                    Custom Template
-                  </Button>
-                </div>
+                <PDFGenerator />
               </Card>
             </TabsContent>
 
@@ -394,4 +320,3 @@ const SimulationPanel = ({
 };
 
 export default SimulationPanel;
-

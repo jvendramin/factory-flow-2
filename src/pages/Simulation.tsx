@@ -1,4 +1,5 @@
-import React from "react";
+
+import React, { useState } from "react";
 import FactoryEditor from "@/components/factory/FactoryEditor";
 import EquipmentPanel from "@/components/factory/EquipmentPanel";
 import SimulationPanel from "@/components/factory/SimulationPanel";
@@ -6,10 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Share2, Plus } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "@/components/ui/use-toast";
+import AddEquipmentForm from "@/components/factory/AddEquipmentForm";
 
 const Simulation = () => {
   const [isSimulating, setIsSimulating] = React.useState(false);
   const [simulationMode, setSimulationMode] = React.useState<"instant" | "play-by-play">("instant");
+  const [addEquipmentOpen, setAddEquipmentOpen] = useState(false);
   
   const handleShareFactory = () => {
     const shareableLink = `${window.location.origin}/share/${btoa(Date.now().toString())}`;
@@ -25,16 +28,26 @@ const Simulation = () => {
     <div className="h-full flex -m-6">
       {/* Left Equipment Panel */}
       <div className="w-64 border-r border-border bg-card">
-        <EquipmentPanel addProposedMode />
+        <EquipmentPanel addProposedMode={true} />
       </div>
       
       {/* Factory Editor */}
       <div className="flex-1 relative">
         <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-1">
-            <Plus size={16} />
-            Add Equipment
-          </Button>
+          <Popover open={addEquipmentOpen} onOpenChange={setAddEquipmentOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1">
+                <Plus size={16} />
+                Add Equipment
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-96 p-0" align="end">
+              <AddEquipmentForm 
+                onEquipmentAdded={() => setAddEquipmentOpen(false)}
+              />
+            </PopoverContent>
+          </Popover>
+          
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className="gap-1">
