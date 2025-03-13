@@ -23,7 +23,7 @@ const Index = () => {
   };
   
   return (
-    <div className="flex w-full h-[calc(100dvh-3.5rem)] max-h-[calc(100dvh-3.5rem)] overflow-hidden">
+    <div className="flex w-full h-full overflow-hidden">
       {/* Left Equipment Panel */}
       <div className="w-64 border-r border-border bg-card h-full flex flex-col">
         <EquipmentPanel />

@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import EquipmentEditModal from "./EquipmentEditModal";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 
 interface EquipmentCardProps {
   equipment: Equipment;
@@ -83,13 +84,15 @@ const EquipmentCard = ({ equipment, onEquipmentUpdated }: EquipmentCardProps) =>
         </CardContent>
       </Card>
       
-      <EquipmentEditModal
-        equipment={currentEquipment}
-        open={showEditModal}
-        onOpenChange={setShowEditModal}
-        onSave={handleSaveEquipment}
-        trigger={null}
-      />
+      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+        <DialogContent className="sm:max-w-[500px]">
+          <EquipmentEditModal
+            equipment={currentEquipment}
+            onSave={handleSaveEquipment}
+            onClose={() => setShowEditModal(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
