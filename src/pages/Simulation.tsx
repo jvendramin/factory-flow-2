@@ -57,14 +57,14 @@ const Simulation = () => {
   }, []);
   
   return (
-    <div className="flex w-full h-full max-h-full overflow-hidden">
+    <div className="flex w-full h-[calc(100dvh-3.5rem)] max-h-[calc(100dvh-3.5rem)] overflow-hidden">
       {/* Left Equipment Panel */}
-      <div className="w-64 border-r border-border bg-card h-full">
+      <div className="w-64 border-r border-border bg-card h-full flex flex-col">
         <EquipmentPanel addProposedMode={true} />
       </div>
       
       {/* Factory Editor */}
-      <div className="flex-1 relative overflow-hidden">
+      <div className="flex-1 relative h-full">
         <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
           <Popover open={addEquipmentOpen} onOpenChange={setAddEquipmentOpen}>
             <PopoverTrigger asChild>
@@ -110,11 +110,16 @@ const Simulation = () => {
             </PopoverContent>
           </Popover>
         </div>
-        <FactoryEditor isSimulating={isSimulating} simulationMode={simulationMode} simulationSpeed={1} onUnitPositionUpdate={() => {}} />
+        <FactoryEditor 
+          isSimulating={isSimulating} 
+          simulationMode={simulationMode} 
+          simulationSpeed={1} 
+          onUnitPositionUpdate={() => {}} 
+        />
       </div>
       
       {/* Right Simulation Panel */}
-      <div className="w-80 border-l border-border bg-card h-full overflow-hidden">
+      <div className="w-80 border-l border-border bg-card h-full flex flex-col">
         <SimulationPanel isSimulating={isSimulating} setIsSimulating={setIsSimulating} simulationMode={simulationMode} setSimulationMode={setSimulationMode} />
       </div>
       

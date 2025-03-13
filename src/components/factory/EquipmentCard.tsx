@@ -34,6 +34,10 @@ const EquipmentCard = ({ equipment, onEquipmentUpdated }: EquipmentCardProps) =>
     }
   };
 
+  const handleEditClick = () => {
+    setShowEditModal(true);
+  };
+
   return (
     <>
       <Card 
@@ -53,7 +57,7 @@ const EquipmentCard = ({ equipment, onEquipmentUpdated }: EquipmentCardProps) =>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setShowEditModal(true)}>
+                  <DropdownMenuItem onClick={handleEditClick}>
                     <Edit className="mr-2 h-4 w-4" />
                     Edit Specifications
                   </DropdownMenuItem>
