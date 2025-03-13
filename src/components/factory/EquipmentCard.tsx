@@ -84,6 +84,7 @@ const EquipmentCard = ({ equipment, onEquipmentUpdated }: EquipmentCardProps) =>
         open={showEditModal}
         onOpenChange={setShowEditModal}
         onSave={handleSaveEquipment}
+        trigger={null}
       />
     </>
   );

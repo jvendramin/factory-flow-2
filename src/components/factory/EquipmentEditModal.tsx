@@ -36,11 +36,12 @@ const EquipmentEditModal = ({
       // Ensure maxCapacity has a default value of 1
       const equipmentWithDefaults = {
         ...equipment,
-        maxCapacity: equipment.maxCapacity ?? 1
+        maxCapacity: equipment.maxCapacity ?? 1,
+        ownership: equipment.ownership || "owned" // Ensure ownership has a default
       };
       setEditedEquipment(equipmentWithDefaults);
     }
-  }, [equipment]);
+  }, [equipment, open]);
 
   if (!editedEquipment) return null;
 
@@ -93,7 +94,7 @@ const EquipmentEditModal = ({
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       {trigger && <PopoverTrigger asChild>{trigger}</PopoverTrigger>}
-      <PopoverContent className="w-[450px] p-0 backdrop-blur-sm bg-background/95" showArrow={false}>
+      <PopoverContent className="w-[450px] p-0 z-50" showArrow={false} align="center" side="right">
         <div className="p-4 border-b">
           <h3 className="font-medium">Edit Equipment Specifications</h3>
           <p className="text-sm text-muted-foreground">
@@ -133,20 +134,20 @@ const EquipmentEditModal = ({
               </Label>
               <div className="col-span-3">
                 <RadioGroup
-                  value={editedEquipment.ownership}
+                  value={editedEquipment.ownership || "owned"}
                   onValueChange={(value) => handleChange("ownership", value as "owned" | "proposed")}
                   className="flex gap-4"
                 >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="owned" id="owned" />
                     <Label htmlFor="owned" className="flex items-center gap-1 cursor-pointer">
-                      <Package size={14} /> Owned
+                      <Package size={14} /> Already Owned
                     </Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="proposed" id="proposed" />
                     <Label htmlFor="proposed" className="flex items-center gap-1 cursor-pointer">
-                      <Lightbulb size={14} /> Proposed
+                      <Lightbulb size={14} /> Proposed (Future Purchase)
                     </Label>
                   </div>
                 </RadioGroup>
@@ -267,6 +268,7 @@ const EquipmentEditModal = ({
         </ScrollArea>
         
         <div className="p-4 border-t flex justify-end">
+          <Button type="button" variant="outline" className="mr-2" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button type="button" onClick={handleSave}>Save changes</Button>
         </div>
       </PopoverContent>

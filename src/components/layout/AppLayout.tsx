@@ -153,11 +153,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({
         </Sidebar>
       </div>
       
-      <ScrollArea className="flex-1 bg-background rounded-l-3xl shadow-md mt-4 mb-4 ml-2 border border-gray-300/20 dark:border-gray-600/20">
-        <div className="p-6">
-          {children}
-        </div>
-      </ScrollArea>
+      <div className="flex-1 bg-background rounded-l-3xl shadow-md mt-4 mb-4 ml-2 border border-gray-300/20 dark:border-gray-600/20 overflow-hidden">
+        {children}
+      </div>
     </div>
   );
 };

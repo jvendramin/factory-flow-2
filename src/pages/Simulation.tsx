@@ -37,6 +37,10 @@ const Simulation = () => {
         title: "Export Completed",
         description: `Your factory design has been exported as ${format.toUpperCase()}`
       });
+      
+      if (format === 'pdf') {
+        setShowPDFDialog(true);
+      }
     }, 1500);
   };
   
@@ -53,7 +57,7 @@ const Simulation = () => {
   }, []);
   
   return (
-    <div className="flex w-full h-[calc(100vh-4rem)] max-h-[calc(100vh-4rem)] overflow-hidden">
+    <div className="flex w-full h-full max-h-full overflow-hidden">
       {/* Left Equipment Panel */}
       <div className="w-64 border-r border-border bg-card h-full">
         <EquipmentPanel addProposedMode={true} />
