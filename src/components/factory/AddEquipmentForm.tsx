@@ -171,10 +171,10 @@ const AddEquipmentForm = ({
         </div>
         
         <div className="grid grid-cols-4 items-start gap-4">
-          <Label className="text-right align-top pt-2">
+          <Label className="text-right align-top pt-2 py-0">
             Ownership
           </Label>
-          <RadioGroup value={newEquipment.ownership} onValueChange={value => handleChange("ownership", value)} className="col-span-3 flex flex-col space-y-1">
+          <RadioGroup value={newEquipment.ownership} onValueChange={value => handleChange("ownership", value)} className="col-span-3 flex flex-col">
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="owned" id="owned" />
               <Label htmlFor="owned" className="font-normal">Already Owned</Label>
