@@ -93,7 +93,7 @@ const EquipmentEditModal = ({
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       {trigger && <PopoverTrigger asChild>{trigger}</PopoverTrigger>}
-      <PopoverContent className="w-[450px] p-0 backdrop-blur-sm bg-background/95">
+      <PopoverContent className="w-[450px] p-0 backdrop-blur-sm bg-background/95" showArrow={false}>
         <div className="p-4 border-b">
           <h3 className="font-medium">Edit Equipment Specifications</h3>
           <p className="text-sm text-muted-foreground">

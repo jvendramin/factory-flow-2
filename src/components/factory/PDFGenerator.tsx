@@ -36,6 +36,10 @@ const PDFGenerator = () => {
         title: "PDF Generated Successfully",
         description: `Loan proposal for ${getBankName(selectedBank)} has been generated.`,
       });
+      
+      // Dispatch an event to trigger the dialog in the parent component
+      const event = new CustomEvent('pdf:generated', { detail: { bank: selectedBank } });
+      document.dispatchEvent(event);
     }, 1500);
   };
 
