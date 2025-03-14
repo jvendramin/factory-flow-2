@@ -17,90 +17,102 @@ export const useDragAndDrop = () => {
         return;
       }
 
-      // Parse the dragged equipment data
-      const equipmentData = JSON.parse(event.dataTransfer.getData('application/reactflow'));
-      
-      if (typeof equipmentData.type !== 'string') {
+      // Get the data transfer item
+      const dataTransferText = event.dataTransfer.getData('application/reactflow');
+      if (!dataTransferText) {
+        console.error('No data found in drag event');
         return;
       }
 
-      const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
-      const position = reactFlowInstance.screenToFlowPosition({
-        x: event.clientX - reactFlowBounds.left,
-        y: event.clientY - reactFlowBounds.top,
-      });
-
-      // Check if dropping inside a group
-      const groups = getNodes().filter(n => n.type === 'group');
-      
-      // Find which group (if any) the position is inside of
-      let parentGroup = null;
-      for (const group of groups) {
-        const width = group.style?.width as number || 300;
-        const height = group.style?.height as number || 200;
+      // Parse the dragged equipment data
+      try {
+        const equipmentData = JSON.parse(dataTransferText);
         
-        if (
-          position.x > group.position.x && 
-          position.x < group.position.x + width &&
-          position.y > group.position.y && 
-          position.y < group.position.y + height
-        ) {
-          parentGroup = group;
-          break;
+        if (typeof equipmentData.type !== 'string') {
+          console.error('Invalid equipment data structure');
+          return;
         }
-      }
-      
-      // Set position based on whether we're dropping in a group
-      let newNodePosition = position;
-      let parentNodeId = undefined;
-      
-      if (parentGroup) {
-        // Calculate position relative to the group
-        newNodePosition = {
-          x: position.x - parentGroup.position.x,
-          y: position.y - parentGroup.position.y
+
+        const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
+        const position = reactFlowInstance.screenToFlowPosition({
+          x: event.clientX - reactFlowBounds.left,
+          y: event.clientY - reactFlowBounds.top,
+        });
+
+        // Check if dropping inside a group
+        const groups = getNodes().filter(n => n.type === 'group');
+        
+        // Find which group (if any) the position is inside of
+        let parentGroup = null;
+        for (const group of groups) {
+          const width = group.style?.width as number || 300;
+          const height = group.style?.height as number || 200;
+          
+          if (
+            position.x > group.position.x && 
+            position.x < group.position.x + width &&
+            position.y > group.position.y && 
+            position.y < group.position.y + height
+          ) {
+            parentGroup = group;
+            break;
+          }
+        }
+        
+        // Set position based on whether we're dropping in a group
+        let newNodePosition = position;
+        let parentNodeId = undefined;
+        
+        if (parentGroup) {
+          // Calculate position relative to the group
+          newNodePosition = {
+            x: position.x - parentGroup.position.x,
+            y: position.y - parentGroup.position.y
+          };
+          parentNodeId = parentGroup.id;
+        }
+
+        // Create the new node
+        const newNode = {
+          id: `equipment-${Date.now()}`,
+          type: 'equipment',
+          position: newNodePosition,
+          parentNode: parentNodeId,
+          extent: parentNodeId ? 'parent' as const : undefined,
+          data: { 
+            ...equipmentData,
+            maxCapacity: equipmentData.maxCapacity || 1 
+          },
         };
-        parentNodeId = parentGroup.id;
+
+        // Add the node to the canvas
+        setNodes((nds) => nds.concat(newNode));
+        
+        // If adding to a group, update the group data
+        if (parentGroup) {
+          setNodes(nds => 
+            nds.map(n => {
+              if (n.id === parentGroup.id) {
+                return {
+                  ...n,
+                  data: {
+                    ...n.data,
+                    nodes: [...(n.data.nodes || []), newNode.id]
+                  }
+                };
+              }
+              return n;
+            })
+          );
+        }
+
+        toast({
+          title: `Added ${equipmentData.name}`,
+          description: `${equipmentData.name} has been added to the factory floor`,
+        });
+      } catch (err) {
+        console.error('Error processing drag data:', err);
       }
-
-      // Create the new node
-      const newNode = {
-        id: `equipment-${Date.now()}`,
-        type: 'equipment',
-        position: newNodePosition,
-        parentNode: parentNodeId,
-        extent: parentNodeId ? 'parent' as const : undefined,
-        data: { 
-          ...equipmentData,
-          maxCapacity: equipmentData.maxCapacity || 1 
-        },
-      };
-
-      // Add the node to the canvas
-      setNodes((nds) => nds.concat(newNode));
-      
-      // If adding to a group, update the group data
-      if (parentGroup) {
-        setNodes(nds => 
-          nds.map(n => {
-            if (n.id === parentGroup.id) {
-              return {
-                ...n,
-                data: {
-                  ...n.data,
-                  nodes: [...(n.data.nodes || []), newNode.id]
-                }
-              };
-            }
-            return n;
-          })
-        );
-      }
-
-      toast({
-        title: `Added ${equipmentData.name}`,
-        description: `${equipmentData.name} has been added to the factory floor`,
-      });
     },
     [getNodes, setNodes]
   );
@@ -115,11 +127,8 @@ export const useDragAndDrop = () => {
     }
     
     try {
-      const jsonData = event.dataTransfer.getData('application/reactflow');
-      if (!jsonData) return;
-      
-      const equipmentData = JSON.parse(jsonData);
-      
+      // We can't reliably get the data during dragOver in all browsers
+      // so we'll just show a generic placeholder
       const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
       const position = reactFlowInstance.screenToFlowPosition({
         x: event.clientX - reactFlowBounds.left,
@@ -127,13 +136,14 @@ export const useDragAndDrop = () => {
       });
       
       if (!placeholderNode) {
+        // Create a generic placeholder
         const placeholder = {
           id: 'placeholder',
           type: 'equipment',
           position,
           data: { 
-            ...equipmentData,
-            name: `${equipmentData.name} (Preview)`,
+            name: 'Equipment Preview',
+            type: 'Previewing',
             placeholder: true 
           },
           className: 'opacity-50 border-dashed',
@@ -141,6 +151,7 @@ export const useDragAndDrop = () => {
         setPlaceholderNode(placeholder);
         setNodes(nds => [...nds.filter(n => n.id !== 'placeholder'), placeholder]);
       } else {
+        // Update placeholder position
         setNodes(nds => 
           nds.map(n => {
             if (n.id === 'placeholder') {
@@ -155,6 +166,7 @@ export const useDragAndDrop = () => {
       }
     } catch (err) {
       // Silent error handling for drag operations
+      console.error('Error in dragOver:', err);
     }
     
   }, [placeholderNode, setNodes]);

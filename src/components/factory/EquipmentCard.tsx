@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Equipment } from "@/types/equipment";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,31 +8,44 @@ import { MoreVertical, Edit } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import EquipmentEditModal from "./EquipmentEditModal";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+
 interface EquipmentCardProps {
   equipment: Equipment;
   onEquipmentUpdated?: (equipment: Equipment) => void;
 }
+
 const EquipmentCard = ({
   equipment,
   onEquipmentUpdated
 }: EquipmentCardProps) => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [currentEquipment, setCurrentEquipment] = useState<Equipment>(equipment);
-  const onDragStart = (event: React.DragEvent, equipment: Equipment) => {
-    event.dataTransfer.setData('application/reactflow', JSON.stringify(equipment));
+  
+  const onDragStart = (event: React.DragEvent<HTMLDivElement>, equipment: Equipment) => {
+    // Stringify the equipment object and set it as the drag data
+    const equipmentJson = JSON.stringify(equipment);
+    event.dataTransfer.setData('application/reactflow', equipmentJson);
     event.dataTransfer.effectAllowed = 'move';
   };
+  
   const handleSaveEquipment = (updatedEquipment: Equipment) => {
     setCurrentEquipment(updatedEquipment);
     if (onEquipmentUpdated) {
       onEquipmentUpdated(updatedEquipment);
     }
   };
+  
   const handleEditClick = () => {
     setShowEditModal(true);
   };
-  return <>
-      <Card className="cursor-grab active:cursor-grabbing hover:bg-accent/50 transition-colors" draggable onDragStart={e => onDragStart(e, currentEquipment)}>
+  
+  return (
+    <>
+      <Card 
+        className="cursor-grab active:cursor-grabbing hover:bg-accent/50 transition-colors" 
+        draggable 
+        onDragStart={(e) => onDragStart(e, currentEquipment)}
+      >
         <CardContent className="p-3">
           <div className="flex flex-col gap-1">
             <div className="flex justify-between items-start">
@@ -72,9 +86,15 @@ const EquipmentCard = ({
       
       <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
         <DialogContent className="sm:max-w-[600px]">
-          <EquipmentEditModal equipment={currentEquipment} onSave={handleSaveEquipment} onClose={() => setShowEditModal(false)} />
+          <EquipmentEditModal 
+            equipment={currentEquipment} 
+            onSave={handleSaveEquipment} 
+            onClose={() => setShowEditModal(false)} 
+          />
         </DialogContent>
       </Dialog>
-    </>;
+    </>
+  );
 };
+
 export default EquipmentCard;
